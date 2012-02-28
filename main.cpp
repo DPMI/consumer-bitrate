@@ -145,7 +145,7 @@ int main (int argc , char **argv) {
   pktCount = 0;
   int required = 0;
 
-  if (argc < 1) {
+  if ( argc < 2 ) {
     printf ("use %s -h or --help for help \n" , argv[0]);
     exit (0);
   }
