@@ -29,6 +29,7 @@
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
+#include <cerrno>
 using namespace std;
 
 #define APP_VERSION_MAJOR 0
@@ -120,7 +121,7 @@ int main (int argc , char **argv) {
 	stream_t* inStream; // stream to read from
 	const char* iface = NULL;
 	double pktCount = 0; // counting number of packets
-	struct timeval tv = {1,0} ; // initilizing timeval to be passed on to
+	struct timeval timeout = {1,0} ; // initilizing timeval to be passed on to
 
 	// end of libcap 0.7 variables
 
@@ -238,92 +239,102 @@ int main (int argc , char **argv) {
 	// rpStatus=read_post(&inStream,dataPtr,myfilter);
 	long ret = 0; // Here the pointer to first packet is already retuned , so extract the timing information from the packet
 	//*dataPtr=(inStream->buffer+inStream->readPos);
-	ret = stream_read (inStream,&caphead,&myFilter,&tv);
-	if(ret==0){
-		// data=*dataPtr;
-		//caphead=(cap_header*)data;
-		pktArrivalTime=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)caphead->ts.tv_psec/PICODIVIDER;
-		timeOffset=floor(pktArrivalTime);
-		pktArrivalTime-=timeOffset;
 
-		if(triggerPoint==1) {
-			nextSample=pktArrivalTime+tSample/2.0; // Set the first sample to occur 0.5Ts from the arrival of this packet.
-		} else {
-			nextSample=floor(pktArrivalTime+tSample/2.0);
+	fprintf(verbose, "Going to read first\n");
+
+	if ( (ret=stream_read (inStream, &caphead, &myFilter, NULL)) != 0 ){
+		fprintf(stderr, "stream_read() returned %ld: %s\n", ret, caputils_error_string(ret));
+		return 1;
+	}
+
+	fprintf(verbose, "Read initial packet\n");
+
+	pktArrivalTime=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)caphead->ts.tv_psec/PICODIVIDER;
+	timeOffset=floor(pktArrivalTime);
+	pktArrivalTime-=timeOffset;
+
+	if(triggerPoint==1) {
+		nextSample=pktArrivalTime+tSample/2.0; // Set the first sample to occur 0.5Ts from the arrival of this packet.
+	} else {
+		nextSample=floor(pktArrivalTime+tSample/2.0);
+	}
+
+	/*
+	  cout << "First packet arrives at " << setiosflags(ios::fixed) << setprecision(12) << (double)(pktArrivalTime+timeOffset) << endl;
+	  printf("                        %lu.%06llu \n",caphead->ts.tv_sec,caphead->ts.tv_psec);
+	  printf("Bins=\n");
+	*/
+
+	for(op=0;op<noBins;op++){
+		ST[op]=nextSample;
+		BINS[op]=0.0;
+		nextSample-=tSample; // Since these will have taken place.
+		//  cout << "[" << op << "] <" << setiosflags(ios::fixed) << setprecision(12) << (double)ST[op] << " = " << BINS[op]  << endl;
 		}
 
-		/*
-		  cout << "First packet arrives at " << setiosflags(ios::fixed) << setprecision(12) << (double)(pktArrivalTime+timeOffset) << endl;
-		  printf("                        %lu.%06llu \n",caphead->ts.tv_sec,caphead->ts.tv_psec);
-		  printf("Bins=\n");
-		*/
+	sampleCounter=0;
+	payLoadSize=0;
 
-		for(op=0;op<noBins;op++){
-			ST[op]=nextSample;
-			BINS[op]=0.0;
-			nextSample-=tSample; // Since these will have taken place.
-			//  cout << "[" << op << "] <" << setiosflags(ios::fixed) << setprecision(12) << (double)ST[op] << " = " << BINS[op]  << endl;
-		}
+	if ( (ret=stream_read (inStream, &caphead, &myFilter, NULL)) != 0 ){
+		fprintf(stderr, "stream_read() returned %ld: %s\n", ret, caputils_error_string(ret));
+		return 1;
+	}
 
-		sampleCounter=0;
+	fprintf(verbose, "Read secondary packet\n");
 
+	while (ret == 0){
 		payLoadSize=0;
-		ret = stream_read (inStream,&caphead,&myFilter,&tv); // readpost gives a data pointer.
-		//data=*dataPtr;
-		//caphead=(cap_header*)data;
+		if(pktArrivalTime<ST[0]) { /* Packet arrived first */
+			//  cout << "pkt["<< pktCount << "]";
+			if(pktArrivalTime<ST[1]) { /* Packet should have arrived earlier, dropping (pktArrival CAN handle this partially */
+				//	  cout << caphead->nic << ":" << caphead->ts.tv_sec << "." << caphead->ts.tv_psec << "\t";
+				//	  cout << "Dropping packet!!!" << endl;
+				dropCount++;
+			} else {                   /* Normal packet treatment */
+				/* Begin by extracting the interesting information. */
+				//    printf("%s:%f.%f:LINK(%4d): \t",caphead->nic,caphead->ts.tv_sec,caphead->ts.tv_psec, caphead->len);
+				//     cout << caphead->nic << ":" << caphead->ts.tv_sec << "." << caphead->ts.tv_psec << ":LINK(" << caphead->len << ") \t";
+				payLoadSize=payLoadExtraction(level,(char*) caphead);
+				pktArrival(to_double(pktArrivalTime),payLoadSize,linkCapacity, BINS,ST, noBins,to_double(tSample));
+				lastEvent=pktArrivalTime;
+			}  // End Normal packet treatment.
 
-
-		while (ret == 0){
-			payLoadSize=0;
-			if(pktArrivalTime<ST[0]) { /* Packet arrived first */
-				//  cout << "pkt["<< pktCount << "]";
-				if(pktArrivalTime<ST[1]) { /* Packet should have arrived earlier, dropping (pktArrival CAN handle this partially */
-					//	  cout << caphead->nic << ":" << caphead->ts.tv_sec << "." << caphead->ts.tv_psec << "\t";
-					//	  cout << "Dropping packet!!!" << endl;
-					dropCount++;
-				} else {                   /* Normal packet treatment */
-					/* Begin by extracting the interesting information. */
-					//    printf("%s:%f.%f:LINK(%4d): \t",caphead->nic,caphead->ts.tv_sec,caphead->ts.tv_psec, caphead->len);
-					//     cout << caphead->nic << ":" << caphead->ts.tv_sec << "." << caphead->ts.tv_psec << ":LINK(" << caphead->len << ") \t";
-					payLoadSize=payLoadExtraction(level,(char*) caphead);
-					pktArrival(to_double(pktArrivalTime),payLoadSize,linkCapacity, BINS,ST, noBins,to_double(tSample));
-					lastEvent=pktArrivalTime;
-				}  // End Normal packet treatment.
-
-				if(pkts>0 && (pktCount+1)>pkts) {
-					/* Read enough pkts lets break. */
-					break;
-				}
-				ret = stream_read (inStream,&caphead,&myFilter,&tv);
-				if(ret == 0){ // readpost says not zero so return must be 0 vamsi
-					//data=*dataPtr;
-					//caphead=(cap_header*)data;
-					pktArrivalTime=(double)caphead->ts.tv_sec+(double)caphead->ts.tv_psec/PICODIVIDER;
-					pktArrivalTime-=timeOffset;
-					pktCount++;
-					// printf("Packet number %g read, it had payload %d \n",pktCount,payLoadSize);
-				}
-
-			} else { /* Sample shoud occur */
-				lastEvent=ST[noBins-1];
-				sampleValue=sampleBINS(BINS,ST,noBins,to_double(tSample),linkCapacity);
-				//	cout << "[" << sampleCounter <<"]  " << setiosflags(ios::fixed) << setprecision(12) << (double)(lastEvent+timeOffset)<< ": " << sampleValue << " bps " << endl;
-				cout << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset)<< ":" << sampleValue << endl;
-				sampleCounter++;
+			if(pkts>0 && (pktCount+1)>pkts) {
+				/* Read enough pkts lets break. */
+				break;
 			}
-		}//End Packet processing
-		//  cout << "Terminated loop. Cleaning up." << endl;
 
-		for(op=0;op<noBins+2;op++){
+			do {
+				struct timeval tv = timeout;
+				ret = stream_read (inStream, &caphead, &myFilter, &tv);
+				if ( ret == EAGAIN ) continue;
+				if ( ret == 0 ) break;
+				else {
+					fprintf(stderr, "stream_read() returned %ld: %s\n", ret, caputils_error_string(ret));
+					return 1;
+				}
+			} while(1);
+
+			pktArrivalTime=(double)caphead->ts.tv_sec+(double)caphead->ts.tv_psec/PICODIVIDER;
+			pktArrivalTime-=timeOffset;
+			pktCount++;
+		} else { /* Sample shoud occur */
 			lastEvent=ST[noBins-1];
 			sampleValue=sampleBINS(BINS,ST,noBins,to_double(tSample),linkCapacity);
-			//      cout << "[" << sampleCounter <<"]" << setiosflags(ios::fixed) << setprecision(12) << (double)(lastEvent+timeOffset) << ": " << sampleValue << endl;
-			cout << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset) << ":" << sampleValue << endl;
+			//	cout << "[" << sampleCounter <<"]  " << setiosflags(ios::fixed) << setprecision(12) << (double)(lastEvent+timeOffset)<< ": " << sampleValue << " bps " << endl;
+			cout << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset)<< ":" << sampleValue << endl;
 			sampleCounter++;
-
 		}
-	} else {
-		/* Cant start stream.. */
+	}//End Packet processing
+	//  cout << "Terminated loop. Cleaning up." << endl;
+
+	for(op=0;op<noBins+2;op++){
+		lastEvent=ST[noBins-1];
+		sampleValue=sampleBINS(BINS,ST,noBins,to_double(tSample),linkCapacity);
+		//      cout << "[" << sampleCounter <<"]" << setiosflags(ios::fixed) << setprecision(12) << (double)(lastEvent+timeOffset) << ": " << sampleValue << endl;
+		cout << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset) << ":" << sampleValue << endl;
+		sampleCounter++;
+
 	}
 
 	delete(ST);
