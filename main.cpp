@@ -54,6 +54,61 @@ int dropCount; // number of packets that have been dropped
 qd_real timeOffset;
 int fractionalPDU;
 
+static struct option long_options [] = {
+	{"pkts",            required_argument , 0, 'p'},
+	{"samplefrequency", required_argument, 0 ,'m'},
+	{"triggerpoint",    required_argument, 0, 'n'},
+	{"level",           required_argument, 0 ,'q'},
+	{"database",        required_argument, 0, 'a'},
+	{"table",           required_argument, 0, 'b'},
+	{"user",            required_argument, 0, 'c'},
+	{"password",        required_argument, 0, 'd'},
+	{"host",            required_argument, 0, 'e'},
+	{"low",             required_argument, 0, 'f'},
+	{"upper",	          required_argument, 0, 'g'},
+	{"delta",	          required_argument, 0, 'k'},
+	{"link",	          required_argument, 0, 'l'},
+	{"sampleinterval",  required_argument, 0, 'j'},
+	{"help",            required_argument, 0, 'h'},
+	{"if",              required_argument, 0, 'i'},
+	{"tcp",             required_argument, 0, 't'},
+	{"udp",             required_argument, 0, 'u'},
+	{"port",            required_argument, 0, 'v'},
+	{"verbose",         required_argument, 0, 'w'},
+	{0, 0, 0, 0}
+};
+
+void show_usage(const char* program_name){
+	printf("(C) 2004 Patrik Arlos <patrik.arlos@bth.se>\n");
+	printf("(C) 2012 Vamsi Krishna Konakalla\n");
+	printf("usage: %s [OPTION]... INPUT\n", program_name);
+	printf ("  -m, --samplefrequency	sample frequency in Hz default [1 Hz] \n");
+	printf ("  -n, --triggerpoint	 If enabled Sampling will start 1/(2*fs) s prior to the first packet. \n");
+	printf ("   	  		otherwise it shall start floor( 1/(2*fs)) s  prior to the first packet.	\n");
+	printf ("  -q, --level 		Level to calculate bitrate {physical (default), link, network, transport and application} \n");
+	printf ("   			At level N , payload of particular layer is only considered, use filters to select particular streams. \n");
+	printf ("   			To calculate the bitrate at physical , use physical layer, Consider for Network layer use [-q network] \n");
+	printf ("   			It shall contain transport protocol header + payload  \n");
+	printf ("   			link:		all bits captured at physical level, i.e link + network + transport + application \n");
+	printf ("   			network:	payload field at link layer , network + transport + application \n");
+	printf ("   			transport	payload at network  layer, transport + application \n");
+	printf ("   			application:	The payload field at transport leve , ie.application \n");
+	printf ("   			Default is link \n");
+	printf ("  -v, --verbose 	Enable verbose output \n");
+	printf ("  -h, -- help 		This help Text \n");
+	printf ("  -e, --host  		Host holding database: default localhost\n");
+	printf ("  -l, --link 		link capacity in Mbps [Default 100 Mbps]");
+	printf ("  -i, --if <NIC> 	Listen to NIC for Ethernet multicast Address \n");
+	printf ("      	   Identified by <INPUT> (01:00:00:00:00:01) \n");
+	printf ("  -t, --tcp 		Listen to TCP stream \n");
+	printf ("    ,	Identified by <INPUT> (192.168.0.10) \n");
+	printf ("  -u, --udp 		Listen to UDP multicast address \n");
+	printf ("   			Listen by <INPUT> Identified by (225.10.11.10) \n");
+	printf ("  <INPUT>		if n,t, u hasnt been declared this \n");
+	printf ("   			is interpretted as filename\n");
+	filter_from_argv_usage();
+}
+
 int main (int argc , char **argv) {
 	int noBins, level, payLoadSize; // Bits Per Second calculation variables [BPScv]
 	//int noBins - number of bins (histogram bar width) , calculated automatically
@@ -84,32 +139,6 @@ int main (int argc , char **argv) {
 	op = 0;
 
 	int this_option_optind ;
-
-	static struct option long_options [] = {
-		{"pkts",1 , 0, 'p'},
-		{"samplefrequency", required_argument, 0 ,'m'},
-		{"triggerpoint", required_argument, 0, 'n'},
-		{"level", required_argument, 0 ,'q'},
-		{"database",       required_argument, 0, 'a'},
-		{"table",          required_argument, 0, 'b'},
-		{"user",           required_argument, 0, 'c'},
-		{"password",       required_argument, 0, 'd'},
-		{"host",           required_argument, 0, 'e'},
-		{"low",            required_argument, 0, 'f'},
-		{"upper",	   required_argument, 0, 'g'},
-		{"delta",	   required_argument, 0, 'k'},
-		{"link",	   required_argument, 0, 'l'},
-		{"sampleinterval", required_argument, 0, 'j'},
-		{"help",           required_argument, 0, 'h'},
-		{"if",             required_argument, 0, 'i'},
-		{"tcp",            required_argument, 0, 't'},
-		{"udp",            required_argument, 0, 'u'},
-		{"port",           required_argument, 0, 'v'},
-		{"verbose",           required_argument, 0, 'w'},
-		{0,0,0,0}
-	};
-
-
 
 	/* Libcap 0.7 variables */
 	struct cap_header *caphead;
@@ -150,7 +179,7 @@ int main (int argc , char **argv) {
 		exit (0);
 	}
 
-	while ((op = getopt_long (argc,argv,"l:hi:u:t:w:v:m:n:q:",long_options, &option_index))!=EOF) {
+	while ((op = getopt_long (argc,argv,"hv:l:i:u:t:w:m:n:q:",long_options, &option_index))!=EOF) {
 		// this_option_optind = optind ? optind :1;
 		//option_index = 0;
 		//op = getopt_long (argc,argv,"l:h:i:u:t:w:v:m:n:q:",long_options, &option_index);
@@ -207,34 +236,7 @@ int main (int argc , char **argv) {
 			portnumber = atoi (optarg);
 			break;
 		case 'h':
-			printf ("-m or -- samplefrequency	sample frequency in Hz default [1 Hz] \n");
-			printf ("-n or -- triggerpoint	 If enabled Sampling will start 1/(2*fs) s prior to the first packet. \n");
-			printf ("	  		otherwise it shall start floor( 1/(2*fs)) s  prior to the first packet.	\n");
-			printf ("-q or --level 		Level to calculate bitrate {physical (default), link, network, transport and application} \n");
-			printf ("			At level N , payload of particular layer is only considered, use filters to select particular streams. \n");
-			printf ("			To calculate the bitrate at physical , use physical layer, Consider for Network layer use [-q network] \n");
-			printf ("			It shall contain transport protocol header + payload  \n");
-			printf ("			link:		all bits captured at physical level, i.e link + network + transport + application \n");
-			printf ("			network:	payload field at link layer , network + transport + application \n");
-			printf ("			transport	payload at network  layer, transport + application \n");
-			printf ("			application:	The payload field at transport leve , ie.application \n");
-			printf ("			Default is link \n");
-			printf ("-w or --verbose 	Disable verbose output \n");
-			printf ("-h or -- help 		This help Text \n");
-			printf ("-e or --host  		Host holding database: default localhost\n");
-			printf ("-l or --link 		link capacity in Mbps [Default 100 Mbps]");
-			printf ("-i or --if <NIC> 	Listen to NIC for Ethernet multicast Address \n");
-			printf ("			Identified by <INPUT> (01:00:00:00:00:01) \n");
-			printf ("-t or --tcp 		Listen to TCP stream \n");
-			printf ("			Identified by <INPUT> (192.168.0.10) \n");
-			printf ("-u or --udp 		Listen to UDP multicast address \n");
-			printf ("			Listen by <INPUT> Identified by (225.10.11.10) \n");
-			printf ("-v or --port 		TCP/UDP port to listen to. Default 0x0810 \n");
-			printf ("<INPUT>		if n,t, u hasnt been declared this \n");
-			printf ("			is interpretted as filename\n");
-			printf ("Usage: \n");
-			printf ("%s [filter options] [application options] <INPUT>\n",argv[0]);
-			filter_from_argv_usage();
+			show_usage(argv[0]);
 			exit (0);
 			break;
 
