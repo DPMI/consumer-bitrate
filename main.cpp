@@ -48,24 +48,13 @@ qd_real timeOffset;
 int fractionalPDU;
 
 static struct option long_options [] = {
-	{"pkts",            required_argument , 0, 'p'},
+	{"pkts",            required_argument, 0, 'p'},
 	{"samplefrequency", required_argument, 0 ,'m'},
 	{"triggerpoint",    required_argument, 0, 'n'},
 	{"level",           required_argument, 0 ,'q'},
-	{"database",        required_argument, 0, 'a'},
-	{"table",           required_argument, 0, 'b'},
-	{"user",            required_argument, 0, 'c'},
-	{"password",        required_argument, 0, 'd'},
-	{"host",            required_argument, 0, 'e'},
-	{"low",             required_argument, 0, 'f'},
-	{"upper",	          required_argument, 0, 'g'},
-	{"delta",	          required_argument, 0, 'k'},
 	{"link",	          required_argument, 0, 'l'},
-	{"sampleinterval",  required_argument, 0, 'j'},
 	{"help",            required_argument, 0, 'h'},
-	{"if",              required_argument, 0, 'i'},
-	{"tcp",             required_argument, 0, 't'},
-	{"udp",             required_argument, 0, 'u'},
+	{"iface",           required_argument, 0, 'i'},
 	{"verbose",         required_argument, 0, 'v'},
 	{0, 0, 0, 0}
 };
@@ -74,30 +63,23 @@ void show_usage(const char* program_name){
 	printf("(C) 2004 Patrik Arlos <patrik.arlos@bth.se>\n");
 	printf("(C) 2012 Vamsi Krishna Konakalla\n");
 	printf("usage: %s [OPTION]... INPUT\n", program_name);
-	printf ("  -m, --samplefrequency	sample frequency in Hz default [1 Hz] \n");
-	printf ("  -n, --triggerpoint	 If enabled Sampling will start 1/(2*fs) s prior to the first packet. \n");
-	printf ("   	  		otherwise it shall start floor( 1/(2*fs)) s  prior to the first packet.	\n");
-	printf ("  -q, --level 		Level to calculate bitrate {physical (default), link, network, transport and application} \n");
-	printf ("   			At level N , payload of particular layer is only considered, use filters to select particular streams. \n");
-	printf ("   			To calculate the bitrate at physical , use physical layer, Consider for Network layer use [-q network] \n");
-	printf ("   			It shall contain transport protocol header + payload  \n");
-	printf ("   			link:		all bits captured at physical level, i.e link + network + transport + application \n");
-	printf ("   			network:	payload field at link layer , network + transport + application \n");
-	printf ("   			transport	payload at network  layer, transport + application \n");
-	printf ("   			application:	The payload field at transport leve , ie.application \n");
-	printf ("   			Default is link \n");
-	printf ("  -v, --verbose 	Enable verbose output \n");
-	printf ("  -h, -- help 		This help Text \n");
-	printf ("  -e, --host  		Host holding database: default localhost\n");
-	printf ("  -l, --link 		link capacity in Mbps [Default 100 Mbps]");
-	printf ("  -i, --if <NIC> 	Listen to NIC for Ethernet multicast Address \n");
-	printf ("      	   Identified by <INPUT> (01:00:00:00:00:01) \n");
-	printf ("  -t, --tcp 		Listen to TCP stream \n");
-	printf ("    ,	Identified by <INPUT> (192.168.0.10) \n");
-	printf ("  -u, --udp 		Listen to UDP multicast address \n");
-	printf ("   			Listen by <INPUT> Identified by (225.10.11.10) \n");
-	printf ("  <INPUT>		if n,t, u hasnt been declared this \n");
-	printf ("   			is interpretted as filename\n");
+	printf ("  -m, --samplefrequency  Sample frequency in Hz default [1 Hz]\n"
+	        "  -n, --triggerpoint	    If enabled Sampling will start 1/(2*fs) s prior to the first packet.\n"
+	        "   	  		              otherwise it shall start floor( 1/(2*fs)) s  prior to the first packet.\n"
+	        "  -q, --level 		        Level to calculate bitrate {physical (default), link, network, transport and application}\n"
+	        "                         At level N , payload of particular layer is only considered, use filters to select particular streams.\n"
+	        "                         To calculate the bitrate at physical , use physical layer, Consider for Network layer use [-q network]\n"
+	        "                         It shall contain transport protocol header + payload\n"
+	        "                           - link: all bits captured at physical level, i.e link + network + transport + application\n"
+	        "                           - network: payload field at link layer , network + transport + application\n"
+	        "                           - transport: payload at network  layer, transport + application\n"
+	        "                           - application: The payload field at transport leve , ie.application\n"
+	        "                         Default is link\n"
+	        "  -p, --pkts=N           Stop after N packets\n"
+	        "  -v, --verbose 	        Enable verbose output\n"
+	        "  -l, --link             link capacity in Mbps [Default 100 Mbps]"
+	        "  -i, --iface=IFACE      MA interface\n"
+	        "  -h, --help 		        This help text\n");
 	filter_from_argv_usage();
 }
 
@@ -168,29 +150,31 @@ int main (int argc , char **argv) {
 
 	if ( argc < 2 ) {
 		printf ("use %s -h or --help for help \n" , argv[0]);
-		exit (0);
+		exit (1);
 	}
 
-	while ((op = getopt_long (argc,argv,"hvl:i:u:t:w:m:n:q:",long_options, &option_index))!=EOF) {
-		// this_option_optind = optind ? optind :1;
-		//option_index = 0;
-		//op = getopt_long (argc,argv,"l:h:i:u:t:w:v:m:n:q:",long_options, &option_index);
-
-		//if (op == -1)
-		// break ;
-
+	while ( (op=getopt_long (argc,argv,"hvl:i:m:n:q:p:",long_options, &option_index)) != -1 ){
 		switch (op) {
-		case 'm' : /*sample Frequency*/
+		case '?': /* error */
+			return 1;
+
+		case 0: /* longopt with flag set */
+			break;
+
+		case 'm' : /* --samplefrequency */
 			sampleFrequency = atof (optarg);
 			tSample = 1/(double) sampleFrequency;
 			break;
-		case 'n': /*Trigger point*/
+
+		case 'n': /* --triggerpoint */
 			triggerPoint = 1;
 			break;
-		case 'v': /*verbose */
+
+		case 'v': /* --verbose */
 			verbose = 1;
 			break ;
-		case 'q':
+
+		case 'q': /* --level */
 			if (strcmp (optarg, "link") == 0)
 				level = 0;
 			else if ( strcmp (optarg, "network" ) == 0)
@@ -200,34 +184,28 @@ int main (int argc , char **argv) {
 			else if (strcmp (optarg , "application") == 0)
 				level = 3;
 			else {
-				printf ("unrecognised level arg %s \n", optarg);
-				exit (0);
+				fprintf(stderr, "unrecognised level arg %s \n", optarg);
+				exit(1);
 			}
 			break;
-		case 'l': /*link Capacity in Mbps*/
+
+		case 'l': /* --link */
 			linkC = atof (optarg);
 			cout << " Link Capacity input = " << linkC << " bps\n";
 			break;
-		case 'p':
+
+		case 'p': /* --pkts */
 			pkts = atoi (optarg);
 			break;
-		case 'i' :
-			l = strlen (optarg);
-			nic = (char*) malloc (l +1);
-			strcpy (nic, optarg);
-			streamType = 1;
+
+		case 'i' : /* --iface */
+			nic = strdup(optarg);
 			break;
-		case 'u':
-			streamType = 2;
-			break;
-		case 't':
-			streamType = 3;
-			break;
-		case 'h':
+
+		case 'h': /* --help */
 			show_usage(argv[0]);
 			exit (0);
 			break;
-
 		default:
 			l = 0;
 		}
