@@ -267,17 +267,8 @@ int main (int argc , char **argv) {
 	}
 // Modified 21 feb 2012
 
-	struct file_version version;
-	const char* mampid = stream_get_mampid(inStream);
-	const char* comment=  stream_get_comment(inStream);
-	stream_get_version (inStream, &version);
-
 	if (verbose) {
-		//  printf ("comment size : %d, ver = %d.%d, MPid = %s  \n comments is %s \n", inStream->FH.comment_size, inStream->FH.version.major, inStream->FH.version.minor,inStream->FH.mpid,inStream->comment);
-		// disabled for security reasons
-		printf ("version.major = %d, version.minor = %d \n", version.major, version.minor);
-		printf("measurementpoint-id = %s \n", mampid != 0 ? mampid : "(unset)\n");
-		printf("comment = %s \n",comment ? comment : "(comment)\n");
+		stream_print_info(inStream, stderr);
 	}
 
 	tid1.tv_sec = sampleLoop;
