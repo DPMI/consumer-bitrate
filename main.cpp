@@ -73,8 +73,7 @@ static struct option long_options [] = {
 	{"if",              required_argument, 0, 'i'},
 	{"tcp",             required_argument, 0, 't'},
 	{"udp",             required_argument, 0, 'u'},
-	{"port",            required_argument, 0, 'v'},
-	{"verbose",         required_argument, 0, 'w'},
+	{"verbose",         required_argument, 0, 'v'},
 	{0, 0, 0, 0}
 };
 
@@ -179,7 +178,7 @@ int main (int argc , char **argv) {
 		exit (0);
 	}
 
-	while ((op = getopt_long (argc,argv,"hv:l:i:u:t:w:m:n:q:",long_options, &option_index))!=EOF) {
+	while ((op = getopt_long (argc,argv,"hvl:i:u:t:w:m:n:q:",long_options, &option_index))!=EOF) {
 		// this_option_optind = optind ? optind :1;
 		//option_index = 0;
 		//op = getopt_long (argc,argv,"l:h:i:u:t:w:v:m:n:q:",long_options, &option_index);
@@ -195,9 +194,8 @@ int main (int argc , char **argv) {
 		case 'n': /*Trigger point*/
 			triggerPoint = 1;
 			break;
-		case 'w': /*verbose */
-			verbose = atoi (optarg);
-			printf ("verbose enabled \n");
+		case 'v': /*verbose */
+			verbose = 1;
 			break ;
 		case 'q':
 			if (strcmp (optarg, "link") == 0)
@@ -231,9 +229,6 @@ int main (int argc , char **argv) {
 			break;
 		case 't':
 			streamType = 3;
-			break;
-		case 'v' :
-			portnumber = atoi (optarg);
 			break;
 		case 'h':
 			show_usage(argv[0]);
