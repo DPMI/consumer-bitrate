@@ -150,7 +150,7 @@ int main (int argc , char **argv) {
     exit (0);
   }
 
-  while ((op = getopt_long (argc,argv,"l:h:i:u:t:w:v:m:n:q:",long_options, &option_index))!=EOF) {
+  while ((op = getopt_long (argc,argv,"l:hi:u:t:w:v:m:n:q:",long_options, &option_index))!=EOF) {
    // this_option_optind = optind ? optind :1;
     //option_index = 0;
     //op = getopt_long (argc,argv,"l:h:i:u:t:w:v:m:n:q:",long_options, &option_index);
