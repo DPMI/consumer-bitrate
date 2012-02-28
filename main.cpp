@@ -272,7 +272,7 @@ int main (int argc , char **argv) {
 	}
 
 	if ((ret = stream_open (&inStream, &src, nic,0)) != 0) {
-		fprintf (stderr, "stream_open () failed with code 0x%08lX",ret, caputils_error_string(ret));
+		fprintf (stderr, "stream_open () failed with code 0x%08lX: %s",ret, caputils_error_string(ret));
 		exit (0);
 		return 1;
 	}
