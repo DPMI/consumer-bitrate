@@ -7,17 +7,10 @@
 
 //comments
 #define pdebug() printf("########## %s %d \n",_FILE_,_LINE_);
-//#ifdef __cplusplus
-//extern "C"{
-//#endif
-#include "caputils/caputils.h"
-#include "caputils/stream.h"
-#include "caputils/filter.h"
-//#ifdef __cplusplus
-//}
-//#endif
 
-
+#include <caputils/caputils.h>
+#include <caputils/stream.h>
+#include <caputils/filter.h>
 
 #include <stdio.h>
 #include <net/if_arp.h>
