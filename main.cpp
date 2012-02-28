@@ -101,7 +101,7 @@ int main (int argc , char **argv) {
 
 	double linkCapacity, sampleFrequency, sampleValue;
 	int triggerPoint = 0; //When do we do the sampling
-	int verbose = 0; //Verbose output
+	FILE* verbose = NULL;
 	int sampleCounter ; //BPScv Consider alter to double
 	qd_real tSample, nextSample,lastEvent, pktArrivalTime; // when does the next sample occur, sample interval time
 	qd_real *BINS, *ST;
@@ -128,7 +128,7 @@ int main (int argc , char **argv) {
 
 	if ((filter_from_argv(&argc,argv, &myFilter)) != 0) {
 		fprintf (stderr, "could not create filter ");
-		exit (0);
+		exit(1);
 	}
 
 	pkts = -1;
@@ -158,7 +158,7 @@ int main (int argc , char **argv) {
 			break;
 
 		case 'v': /* --verbose */
-			verbose = 1;
+			verbose = stderr;
 			break ;
 
 		case 'q': /* --level */
@@ -204,29 +204,30 @@ int main (int argc , char **argv) {
 		}
 	}
 
+	/* discard by default */
+	if ( !verbose ){
+		verbose = fopen("/dev/null", "r");
+	}
+
 	noBins =  (ceil ((double)(1514*8)/(double) linkCapacity/to_double(tSample)));
 	noBins+= 2; // +1 to account for edge values, second +1 to account for n+1 samples.
 	BINS = new qd_real [noBins];
 	ST =  new qd_real [noBins];
 //to_double is a qd function that converts a qd to int type. else we get an error
 
-	if (verbose) {
-		cout << "Longest transfer time = "<< (double)1514*8 /(double) linkCapacity<< endl;
-		cout << "tT/tStamp = "<< (double) (double) 1514*8 /(double) linkCapacity/tSample<< endl;
-		printf ("we need %d bins \n",noBins);
-		printf ("Allocating memory buffer \n");
-		cout << "sampleFrequency ="<< sampleFrequency<<"Hz" << to_double(tSample)<< endl;
-		cout << "LinkCapacity = "<< linkCapacity/1e6<<"Mbps \n"<<endl;
-	}
+	fprintf(verbose, "Longest transfer time = %f\n", (double)1514*8 /(double) linkCapacity);
+	fprintf(verbose, "tT/tStamp = %f\n", to_double(1514*8 /(double) linkCapacity/tSample));
+	fprintf(verbose, "we need %d bins\n", noBins);
+	fprintf(verbose, "Allocating memory buffer\n");
+	fprintf(verbose, "sampleFrequency = %fHz %f\n", sampleFrequency, to_double(tSample));
+	fprintf(verbose, "LinkCapacity = %fMbps\n", linkCapacity/1e6);
 
 	/* Open source stream */
 	if ( stream_from_getopt(&inStream, argv, optind, argc, iface, NULL) != 0 ){
 		return 1; /* error already shown */
 	}
 
-	if (verbose) {
-		stream_print_info(inStream, stderr);
-	}
+	stream_print_info(inStream, verbose);
 
 	// begin packet processing
 
@@ -329,9 +330,8 @@ int main (int argc , char **argv) {
 	delete(BINS);
 
 	stream_close(inStream);
-	if (verbose) {
-		printf("There was a total of %g pkts that matched the filter.\n",pktCount);
-	}
+	fprintf(verbose, "There was a total of %g pkts that matched the filter.\n",pktCount);
+
 	return 0;
 }
 
