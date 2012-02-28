@@ -47,6 +47,8 @@ int dropCount; // number of packets that have been dropped
 qd_real timeOffset;
 int fractionalPDU;
 
+static const char* program_name;
+
 static struct option long_options [] = {
 	{"pkts",            required_argument, 0, 'p'},
 	{"samplefrequency", required_argument, 0 ,'m'},
@@ -84,6 +86,14 @@ void show_usage(const char* program_name){
 }
 
 int main (int argc , char **argv) {
+	/* extract program name from path. e.g. /path/to/MArCd -> MArCd */
+	const char* separator = strrchr(argv[0], '/');
+	if ( separator ){
+		program_name = separator + 1;
+	} else {
+		program_name = argv[0];
+	}
+
 	int noBins, level, payLoadSize; // Bits Per Second calculation variables [BPScv]
 	//int noBins - number of bins (histogram bar width) , calculated automatically
 	//int level -  at what level should bitrate be calculated, given by user
@@ -123,7 +133,7 @@ int main (int argc , char **argv) {
 	int streamType; // stream type defining udp tcp or ethernet
 	streamType =0; // default initialization is ethernet
 	int l ; //temporary variable
-	char *nic = 0; // holder of NIC string
+	const char* iface = NULL;
 	int portnumber = 0x810; // default port number initialization
 	int readStreamStatus; // reading stream status default must return 0
 	//int d; // for dealing with packets
@@ -199,7 +209,7 @@ int main (int argc , char **argv) {
 			break;
 
 		case 'i' : /* --iface */
-			nic = strdup(optarg);
+			iface = optarg;
 			break;
 
 		case 'h': /* --help */
@@ -211,17 +221,12 @@ int main (int argc , char **argv) {
 		}
 	}
 
-	l = strlen (argv [argc -1]);
-	filename = (char*) malloc (l +1);
-	filename = argv [argc -1];
-	printf ("filename is %s \n",filename);
-	/* debug */
-
 	noBins =  (ceil ((double)(1514*8)/(double) linkCapacity/to_double(tSample)));
 	noBins+= 2; // +1 to account for edge values, second +1 to account for n+1 samples.
 	BINS = new qd_real [noBins];
 	ST =  new qd_real [noBins];
 //to_double is a qd function that converts a qd to int type. else we get an error
+
 	if (verbose) {
 		cout << "Longest transfer time = "<< (double)1514*8 /(double) linkCapacity<< endl;
 		cout << "tT/tStamp = "<< (double) (double) 1514*8 /(double) linkCapacity/tSample<< endl;
@@ -231,19 +236,10 @@ int main (int argc , char **argv) {
 		cout << "LinkCapacity = "<< linkCapacity/1e6<<"Mbps \n"<<endl;
 	}
 
-	long ret;
-	if ((argc - optind) > 0) {
-		ret = stream_addr_aton(&src, filename,STREAM_ADDR_GUESS,0);
+	/* Open source stream */
+	if ( stream_from_getopt(&inStream, argv, optind, argc, iface, NULL) != 0 ){
+		return 1; /* error already shown */
 	}
-	else {
-		printf("must specify source \n");
-	}
-
-	if ((ret = stream_open (&inStream, &src, nic,0)) != 0) {
-		fprintf(stderr, "stream_open () failed with code 0x%08lX: %s\n",ret, caputils_error_string(ret));
-		return 1;
-	}
-// Modified 21 feb 2012
 
 	if (verbose) {
 		stream_print_info(inStream, stderr);
@@ -260,7 +256,7 @@ int main (int argc , char **argv) {
 	///////////////////// HERE ONWARS LOOK INTOOOOO
 	//Begin Packet processing
 	// rpStatus=read_post(&inStream,dataPtr,myfilter);
-	ret = 0; // Here the pointer to first packet is already retuned , so extract the timing information from the packet
+	long ret = 0; // Here the pointer to first packet is already retuned , so extract the timing information from the packet
 	//*dataPtr=(inStream->buffer+inStream->readPos);
 	ret = stream_read (inStream,&caphead,&myFilter,&tv);
 	if(ret==0){
