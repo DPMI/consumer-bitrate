@@ -55,7 +55,6 @@ qd_real timeOffset;
 int fractionalPDU;
 
 int main (int argc , char **argv) {
-printf ("hello world \n");
   int noBins, level, payLoadSize; // Bits Per Second calculation variables [BPScv]
   //int noBins - number of bins (histogram bar width) , calculated automatically
   //int level -  at what level should bitrate be calculated, given by user
