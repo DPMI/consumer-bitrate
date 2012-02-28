@@ -102,52 +102,29 @@ int main (int argc , char **argv) {
 	double linkCapacity, sampleFrequency, sampleValue;
 	int triggerPoint = 0; //When do we do the sampling
 	int verbose = 0; //Verbose output
-	int option_index, eventCounter,sampleCounter ; //BPScv Consider alter to double
+	int sampleCounter ; //BPScv Consider alter to double
 	qd_real tSample, nextSample,lastEvent, pktArrivalTime; // when does the next sample occur, sample interval time
 	qd_real *BINS, *ST;
 	dropCount =0; // initializing packets dropped
-	option_index = 0; //variables to handle calling arguments
 	fractionalPDU = 1;
-	//double xLow,xHigh,xDiff ; //histogram variables
-	//int histFlag;
-
 	sampleFrequency = 1;
 	tSample = 1/(double)sampleFrequency;
 	linkCapacity=10e6; // initializing as 10 Mbps
 	level = 0;
 
-	int sampleLoop = 60;
 	double linkC = 100.0 ;
-	extern int optind, opterr, optopt ; // STD file reader variables
-	register int op;
-	op = 0;
-
-	int this_option_optind ;
 
 	/* Libcap 0.7 variables */
 	struct cap_header *caphead;
-	char * filename;
 	struct filter myFilter; // filter to filter arguments
 	stream_t* inStream; // stream to read from
-	stream_addr_t src; // address of stream
-	int streamType; // stream type defining udp tcp or ethernet
-	streamType =0; // default initialization is ethernet
-	int l ; //temporary variable
 	const char* iface = NULL;
-	int portnumber = 0x810; // default port number initialization
-	int readStreamStatus; // reading stream status default must return 0
-	//int d; // for dealing with packets
-	//int* data = &d; //pointer to packets
-	//int** dataPtr = &data; // pointer to pointer of packets
 	double pktCount = 0; // counting number of packets
 	struct timeval tv = {1,0} ; // initilizing timeval to be passed on to
 
 	// end of libcap 0.7 variables
 
 	double pkts;
-	struct timeval tid1, tid2; //times used with runtime.
-	// timer used with runtime
-	struct timeval theTime;
 
 	if ((filter_from_argv(&argc,argv, &myFilter)) != 0) {
 		fprintf (stderr, "could not create filter ");
@@ -156,14 +133,14 @@ int main (int argc , char **argv) {
 
 	pkts = -1;
 	pktCount = 0;
-	int required = 0;
 
 	if ( argc < 2 ) {
 		printf ("use %s -h or --help for help \n" , argv[0]);
 		exit (1);
 	}
 
-	while ( (op=getopt_long (argc,argv,"hvl:i:m:n:q:p:",long_options, &option_index)) != -1 ){
+	int op, option_index = -1;
+	while ( (op=getopt_long(argc, argv, "hvl:i:m:n:q:p:", long_options, &option_index)) != -1 ){
 		switch (op) {
 		case '?': /* error */
 			return 1;
@@ -216,8 +193,14 @@ int main (int argc , char **argv) {
 			show_usage(argv[0]);
 			exit (0);
 			break;
+
 		default:
-			l = 0;
+			if ( option_index >= 0 ){
+				fprintf(stderr, "flag --%s declared but not handled\n", long_options[option_index].name);
+			} else {
+				fprintf(stderr, "flag -%c declared but not handled\n", op);
+			}
+			abort();
 		}
 	}
 
@@ -245,10 +228,6 @@ int main (int argc , char **argv) {
 		stream_print_info(inStream, stderr);
 	}
 
-	tid1.tv_sec = sampleLoop;
-	tid1.tv_usec = 0;
-	tid2.tv_sec =sampleLoop;
-	tid2.tv_usec= 0;
 	// begin packet processing
 
 	//while  ( (ret = stream_read (src,dataPtr,NULL,&tv)) == 0){
@@ -285,7 +264,6 @@ int main (int argc , char **argv) {
 			//  cout << "[" << op << "] <" << setiosflags(ios::fixed) << setprecision(12) << (double)ST[op] << " = " << BINS[op]  << endl;
 		}
 
-		eventCounter=0;
 		sampleCounter=0;
 
 		payLoadSize=0;
