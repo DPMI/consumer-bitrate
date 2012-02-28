@@ -68,15 +68,15 @@ printf ("hello world \n");
   qd_real tSample, nextSample,lastEvent, pktArrivalTime; // when does the next sample occur, sample interval time
   qd_real *BINS, *ST;
   dropCount =0; // initializing packets dropped
-  option_index = 0; //variables to handle calling arguments 
-  fractionalPDU = 1;	
+  option_index = 0; //variables to handle calling arguments
+  fractionalPDU = 1;
   //double xLow,xHigh,xDiff ; //histogram variables
   //int histFlag;
 
   sampleFrequency = 1;
   tSample = 1/(double)sampleFrequency;
   linkCapacity=10e6; // initializing as 10 Mbps
-  level = 0; 
+  level = 0;
 
   int sampleLoop = 60;
   double linkC = 100.0 ;
@@ -95,7 +95,7 @@ printf ("hello world \n");
     {"table",          required_argument, 0, 'b'},
     {"user",           required_argument, 0, 'c'},
     {"password",       required_argument, 0, 'd'},
-    {"host",           required_argument, 0, 'e'}, 
+    {"host",           required_argument, 0, 'e'},
     {"low",            required_argument, 0, 'f'},
     {"upper",	   required_argument, 0, 'g'},
     {"delta",	   required_argument, 0, 'k'},
@@ -106,13 +106,13 @@ printf ("hello world \n");
     {"tcp",            required_argument, 0, 't'},
     {"udp",            required_argument, 0, 'u'},
     {"port",           required_argument, 0, 'v'},
-    {"verbose",           required_argument, 0, 'w'},	
+    {"verbose",           required_argument, 0, 'w'},
     {0,0,0,0}
   };
 
 
 
-  /* Libcap 0.7 variables */ 
+  /* Libcap 0.7 variables */
   struct cap_header *caphead;
   char * filename;
   struct filter myFilter; // filter to filter arguments
@@ -128,7 +128,7 @@ printf ("hello world \n");
   //int* data = &d; //pointer to packets
   //int** dataPtr = &data; // pointer to pointer of packets
   double pktCount = 0; // counting number of packets
-  struct timeval tv = {1,0} ; // initilizing timeval to be passed on to 
+  struct timeval tv = {1,0} ; // initilizing timeval to be passed on to
 
   // end of libcap 0.7 variables
 
@@ -171,8 +171,8 @@ printf ("hello world \n");
       verbose = atoi (optarg);
 	printf ("verbose enabled \n");
       break ;
-    case 'q': 
-      if (strcmp (optarg, "link") == 0) 
+    case 'q':
+      if (strcmp (optarg, "link") == 0)
 	level = 0;
       else if ( strcmp (optarg, "network" ) == 0)
 	level = 1;
@@ -239,11 +239,11 @@ printf ("hello world \n");
       exit (0);
       break;
 
-    default: 
+    default:
       l = 0;
     }
   }
- 
+
   l = strlen (argv [argc -1]);
   filename = (char*) malloc (l +1);
   filename = argv [argc -1];
@@ -282,8 +282,8 @@ printf ("filename is %s \n",filename);
   struct file_version version;
  const char* mampid = stream_get_mampid(inStream);
  const char* comment=  stream_get_comment(inStream);
- stream_get_version (inStream, &version); 
-  
+ stream_get_version (inStream, &version);
+
   if (verbose) {
   //  printf ("comment size : %d, ver = %d.%d, MPid = %s  \n comments is %s \n", inStream->FH.comment_size, inStream->FH.version.major, inStream->FH.version.minor,inStream->FH.mpid,inStream->comment);
   // disabled for security reasons
@@ -298,7 +298,7 @@ printf("comment = %s \n",comment ? comment : "(comment)\n");
   tid2.tv_usec= 0;
   // begin packet processing
 
-  //while  ( (ret = stream_read (src,dataPtr,NULL,&tv)) == 0){ 
+  //while  ( (ret = stream_read (src,dataPtr,NULL,&tv)) == 0){
 
   ///////////////////// HERE ONWARS LOOK INTOOOOO
   //Begin Packet processing
@@ -312,7 +312,7 @@ printf("comment = %s \n",comment ? comment : "(comment)\n");
     pktArrivalTime=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)caphead->ts.tv_psec/PICODIVIDER;
     timeOffset=floor(pktArrivalTime);
     pktArrivalTime-=timeOffset;
-    
+
     if(triggerPoint==1) {
       nextSample=pktArrivalTime+tSample/2.0; // Set the first sample to occur 0.5Ts from the arrival of this packet.
     } else {
@@ -331,10 +331,10 @@ printf("comment = %s \n",comment ? comment : "(comment)\n");
       nextSample-=tSample; // Since these will have taken place.
       //  cout << "[" << op << "] <" << setiosflags(ios::fixed) << setprecision(12) << (double)ST[op] << " = " << BINS[op]  << endl;
     }
-    
+
     eventCounter=0;
     sampleCounter=0;
-    
+
     payLoadSize=0;
     ret = stream_read (inStream,&caphead,&myFilter,&tv); // readpost gives a data pointer.
     //data=*dataPtr;
@@ -357,10 +357,10 @@ printf("comment = %s \n",comment ? comment : "(comment)\n");
 	  pktArrival(to_double(pktArrivalTime),payLoadSize,linkCapacity, BINS,ST, noBins,to_double(tSample));
 	  lastEvent=pktArrivalTime;
 	}  // End Normal packet treatment.
-	
+
 	if(pkts>0 && (pktCount+1)>pkts) {
 	  /* Read enough pkts lets break. */
-	  break;                                                 
+	  break;
 	}
 	ret = stream_read (inStream,&caphead,&myFilter,&tv);
 	if(ret == 0){ // readpost says not zero so return must be 0 vamsi
@@ -371,7 +371,7 @@ printf("comment = %s \n",comment ? comment : "(comment)\n");
 	  pktCount++;
        // printf("Packet number %g read, it had payload %d \n",pktCount,payLoadSize);
 	}
-	
+
       } else { /* Sample shoud occur */
 	lastEvent=ST[noBins-1];
 	sampleValue=sampleBINS(BINS,ST,noBins,to_double(tSample),linkCapacity);
@@ -390,7 +390,7 @@ printf("comment = %s \n",comment ? comment : "(comment)\n");
       sampleCounter++;
 
     }
-  } else { 
+  } else {
     /* Cant start stream.. */
   }
 
@@ -457,10 +457,10 @@ void pktArrival(double tArr, int pktSize, double linkCapacity,qd_real *BITS,qd_r
 
 #ifdef debug
   cout << "  [tStart " << setiosflags(ios::fixed) << setprecision(12) << (double)tStart << " -- tTrfs " << (double)tTransfer << "  ---- " << (double)tArr << " tT/tS " << (double)tTransfer/tSample << endl;
- 
+
 #endif
   if(fractionalPDU==0){        // Do not consider fractional pdus, just wack them in the array.
-    BITS[0]+=pktSize*8;   
+    BITS[0]+=pktSize*8;
   } else {       // Normal treatemant
 
     if(tArr<STy[0] && tArr>STy[1]) {        // Pkt arrives in the "next" sample.. NORMAL behaviour.
@@ -483,7 +483,7 @@ void pktArrival(double tArr, int pktSize, double linkCapacity,qd_real *BITS,qd_r
           if(ceil(to_double(tTransfer/tSample))>=bins) {  // Calculate how many bins that the packet needs to be completely measured.
 	    cout << "  [tStart " << tStart << " -- tTrfs " << tTransfer << "  ---- " << tArr << " tT/tS " << tTransfer/tSample << endl;
 	    printf("Error: pkt to large...\n");      // It needs more than we got, ERROR!! Increase the noBins in the init..
-	    return;                                  // Each extra bin, allows us to handle packets that are 
+	    return;                                  // Each extra bin, allows us to handle packets that are
           }                                            // offset by tSample seconds. Thus 10 extra bins, allows pkts to be offset 10tSample
 
           bits=pktSize*8.0-(tArr-STy[1])*linkCapacity; // How many bits will remain of the packet after the once that go to
@@ -667,7 +667,7 @@ int payLoadExtraction(int level, char* data)
   struct tcphdr *tcp=0;
   struct udphdr *udp=0;
    cap_header *caphead=(cap_header*)data;
-    
+
   if(level==0) { payLoadSize=caphead->len; };                             // payload size at physical (ether+network+transport+app)
   ether=(struct ethhdr*)(data +sizeof(cap_header));
   if(level==1) { payLoadSize=caphead->len-sizeof(struct ethhdr); }; // payload size at link  (network+transport+app)
