@@ -228,7 +228,7 @@ int main (int argc , char **argv) {
 	fprintf(verbose, "LinkCapacity = %fMbps\n", linkCapacity/1e6);
 
 	/* Open source stream */
-	stream_t* inStream; // stream to read from
+	stream_t inStream; // stream to read from
 	if ( stream_from_getopt(&inStream, argv, optind, argc, iface, NULL) != 0 ){
 		return 1; /* error already shown */
 	}
