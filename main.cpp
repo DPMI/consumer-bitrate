@@ -41,9 +41,13 @@ using namespace std;
 #define STPBRIDGES 0x0026
 #define CDPVTP 0x016E
 
+#ifndef ETHERTYPE_IPV6 /* libc might not provide this if it is missing ipv6 support */
+#define ETHERTYPE_IPV6 0x86dd
+#endif /* ETHERTYPE_IPV6 */
+
 static void pktArrival (double tArr, int pktSize, double linkCapacity,qd_real *BITS, qd_real *ST, int bins, double tSample);
 static double sampleBINS (qd_real *BITS, qd_real * ST, int bins, double tSample, double linkCapacity);
-static int payLoadExtraction (int level, char* data);
+static int payLoadExtraction (int level, const cap_head* caphead);
 
 static int fractionalPDU = 1;
 static const char* program_name;
@@ -303,7 +307,7 @@ int main (int argc , char **argv) {
 				/* Begin by extracting the interesting information. */
 				//    printf("%s:%f.%f:LINK(%4d): \t",caphead->nic,caphead->ts.tv_sec,caphead->ts.tv_psec, caphead->len);
 				//     cout << caphead->nic << ":" << caphead->ts.tv_sec << "." << caphead->ts.tv_psec << ":LINK(" << caphead->len << ") \t";
-				payLoadSize=payLoadExtraction(level,(char*) caphead);
+				payLoadSize = payLoadExtraction(level, caphead);
 				pktArrival(to_double(pktArrivalTime),payLoadSize,linkCapacity, BINS,ST, noBins,to_double(tSample));
 				lastEvent=pktArrivalTime;
 			}  // End Normal packet treatment.
@@ -616,50 +620,74 @@ static double sampleBINS(qd_real *BITS, qd_real *STy, int bins,double tSample, d
 */
 //caphead is new one, data is old.
 
-static int payLoadExtraction(int level, char* data)
-{
-#ifdef debug
-	// cout << "->payLoadExtraction(" << level <<", data)" << endl;
-#endif
+static int payLoadExtraction(int level, const cap_head* caphead) {
+	// payload size at physical (ether+network+transport+app)
+	if ( level==0 ) {
+		return caphead->len;
+	};
 
-	int payLoadSize=0;
-	struct ethhdr *ether=0;
-	struct ip *ip_hdr=0;
-	struct tcphdr *tcp=0;
-	struct udphdr *udp=0;
-	cap_header *caphead=(cap_header*)data;
+	// payload size at link  (network+transport+app)
+	if ( level==1 ) {
+		return caphead->len - sizeof(struct ethhdr);
+	};
 
-	if(level==0) { payLoadSize=caphead->len; };                             // payload size at physical (ether+network+transport+app)
-	ether=(struct ethhdr*)(data +sizeof(cap_header));
-	if(level==1) { payLoadSize=caphead->len-sizeof(struct ethhdr); }; // payload size at link  (network+transport+app)
+	const struct ethhdr *ether = caphead->ethhdr;
+	const struct ip* ip_hdr = NULL;
+	struct tcphdr* tcp = NULL;
+	struct udphdr* udp = NULL;
+	size_t vlan_offset = 0;
 
 	switch(ntohs(ether->h_proto)) {
 	case ETHERTYPE_IP:/* Packet contains an IP, PASS TWO! */
-		ip_hdr=(struct ip*)(data +sizeof(cap_header)+sizeof(struct ethhdr));
-		if(level==2) { payLoadSize=ntohs(ip_hdr->ip_len)-4*ip_hdr->ip_hl; }; // payload size at network  (transport+app)
+		ip_hdr = (struct ip*)(caphead->payload + sizeof(cap_header) + sizeof(struct ethhdr));
+	  ipv4:
+
+		// payload size at network  (transport+app)
+		if ( level==2 ) {
+			return ntohs(ip_hdr->ip_len)-4*ip_hdr->ip_hl;
+		};
+
 		switch(ip_hdr->ip_p) { /* Test what transport protocol is present */
 		case IPPROTO_TCP: /* TCP */
-			tcp=(struct tcphdr*)(data +sizeof(cap_header)+sizeof(struct ethhdr)+4*ip_hdr->ip_hl);
-			if(level==3) { payLoadSize=ntohs(ip_hdr->ip_len)-4*tcp->doff-4*ip_hdr->ip_hl; };  // payload size at transport  (app)
+			tcp = (struct tcphdr*)(caphead->payload + sizeof(cap_header) + sizeof(struct ethhdr) + vlan_offset + 4*ip_hdr->ip_hl);
+			if(level==3) return ntohs(ip_hdr->ip_len)-4*tcp->doff-4*ip_hdr->ip_hl;  // payload size at transport  (app)
 			break;
 		case IPPROTO_UDP: /* UDP */
-			udp=(struct udphdr*)(data +sizeof(cap_header)+sizeof(struct ethhdr)+4*ip_hdr->ip_hl);
-			if(level==3) { payLoadSize=(u_int16_t)(ntohs(udp->len)-8); };                     // payload size at transport  (app)
+			udp = (struct udphdr*)(caphead->payload + sizeof(cap_header) + sizeof(struct ethhdr) + vlan_offset + 4*ip_hdr->ip_hl);
+			if(level==3) return ntohs(udp->len)-8;                     // payload size at transport  (app)
 			break;
 		default:
-			if(level==3) { payLoadSize=(u_int16_t)(ntohs(udp->len)-8); };                     // payload size at transport  (app)
-			//printf("Unknown transport protocol: %d \n", ip_hdr->ip_p);
-			break;
-		} //End switch(ip_hdr->ip_p)
+			fprintf(stderr, "Unknown IP transport protocol: %d\n", ip_hdr->ip_p);
+			return 0; /* there is no way to know the actual payload size here */
+		}
 		break;
+
+	case ETHERTYPE_VLAN:
+		ip_hdr = (struct ip*)(caphead->payload + sizeof(cap_header) + sizeof(struct ether_vlan_header));
+		vlan_offset = 4;
+		goto ipv4;
+
+	case ETHERTYPE_IPV6:
+		fprintf(stderr, "IPv6 not handled, ignored\n");
+		return 0;
+
+	case ETHERTYPE_ARP:
+		fprintf(stderr, "ARP not handled, ignored\n");
+		return 0;
+
+	case STPBRIDGES:
+		fprintf(stderr, "STP not handled, ignored\n");
+		return 0;
+
+	case CDPVTP:
+		fprintf(stderr, "CDPVTP not handled, ignored\n");
+		return 0;
+
 	default:      /* Packet contains unknown link . */
-		if(level==2) { payLoadSize=ntohs(ip_hdr->ip_len)-4*ip_hdr->ip_hl; };                         // payload size at network  (transport+app)
-		// printf("Unknown link type 0x%0x \n", ntohs(ether->h_proto));
-		break;
-	}//End switch(ntohs(ether->ether_type))
+		fprintf(stderr, "Unknown ETHERTYPE 0x%0x \n", ntohs(ether->h_proto));
+		return 0; /* there is no way to know the actual payload size here, a zero will ignore it in the calculation */
+	}
 
-	//payLoadSize=caphead->len;
-	// cout << "<-payLoadExtraction:" << payLoadSize << " ." << endl;
-
-	return payLoadSize;
+	fprintf(stderr, "packet wasn't handled by payLoadExtraction, ignored\n");
+	return 0;
 }
