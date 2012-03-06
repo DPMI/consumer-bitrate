@@ -5,20 +5,17 @@
 #g++ -c bitrate_modified_feb_2012.cpp 
 #g++ -o bitrate bitrate_modified_feb_2012.o
 
-CARG=-c -O4 -Wall 
-OBJECTd= main.o
+CFLAGS  += -Wall
+LDFLAGS +=
 
+OBJECTd= main.o
 targetd= bitrate
 
-
-
-
 all: $(OBJECTd)	
-	$(CXX) -o $(targetd) $(OBJECTd) -lqd -L/usr/local/lib -lcap_stream-07
+	$(CXX) -o $(targetd) $(LDFLAGS) $(OBJECTd) $(shell pkg-config libcap_utils-0.7 libcap_filter-0.7 conserver-0.7 --libs) -lqd
 
 clean:
-	rm -f *.o *.exe
-	rm -r $(OBJECTd) 
+	rm -f *.o $(OBJECTd)
 
 main.o: main.cpp
-	$(CXX) $(CARG) main.cpp -lqd -L/usr/local/lib -lcap_stream-07
+	$(CXX) $(CFLAGS) $(shell pkg-config libcap_stream-0.7 conserver-0.7 --cflags) -c main.cpp -o main.o

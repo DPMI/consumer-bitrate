@@ -7,12 +7,15 @@
 
 //comments
 #define pdebug() printf("########## %s %d \n",_FILE_,_LINE_);
+#define __STDC_FORMAT_MACROS
 
 #include <caputils/caputils.h>
 #include <caputils/stream.h>
 #include <caputils/filter.h>
+#include <conserver/server.h>
 
 #include <stdio.h>
+#include <inttypes.h>
 #include <net/if_arp.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -38,31 +41,30 @@ using namespace std;
 #define STPBRIDGES 0x0026
 #define CDPVTP 0x016E
 
-void pktArrival (double tArr, int pktSize, double linkCapacity,qd_real *BITS, qd_real *ST, int bins, double tSample);
-double sampleBINS (qd_real *BITS, qd_real * ST, int bins, double tSample, double linkCapacity);
-int payLoadExtraction (int level, char* data);
-void filter_from_argv_usage(void);
-void Sample (int sig);
+static void pktArrival (double tArr, int pktSize, double linkCapacity,qd_real *BITS, qd_real *ST, int bins, double tSample);
+static double sampleBINS (qd_real *BITS, qd_real * ST, int bins, double tSample, double linkCapacity);
+static int payLoadExtraction (int level, char* data);
 
-int dropCount; // number of packets that have been dropped
-qd_real timeOffset;
-int fractionalPDU;
-
+static int fractionalPDU = 1;
 static const char* program_name;
+static int keep_running = 1;
 
 static struct option long_options [] = {
-	{"pkts",            required_argument, 0, 'p'},
+	{"pkts",            required_argument, 0, 's'},
 	{"samplefrequency", required_argument, 0 ,'m'},
 	{"triggerpoint",    required_argument, 0, 'n'},
+	{"no-fraction",     no_argument,       0, 'z'},
 	{"level",           required_argument, 0 ,'q'},
 	{"link",	          required_argument, 0, 'l'},
 	{"help",            required_argument, 0, 'h'},
 	{"iface",           required_argument, 0, 'i'},
 	{"verbose",         required_argument, 0, 'v'},
+	{"listen",          required_argument, 0, 'g'},
+	{"port",            required_argument, 0, 'p'},
 	{0, 0, 0, 0}
 };
 
-void show_usage(const char* program_name){
+static void show_usage(const char* program_name){
 	printf("(C) 2004 Patrik Arlos <patrik.arlos@bth.se>\n");
 	printf("(C) 2012 Vamsi Krishna Konakalla\n");
 	printf("usage: %s [OPTION]... INPUT\n", program_name);
@@ -78,11 +80,14 @@ void show_usage(const char* program_name){
 	        "                           - transport: payload at network  layer, transport + application\n"
 	        "                           - application: The payload field at transport leve , ie.application\n"
 	        "                         Default is link\n"
-	        "  -p, --pkts=N           Stop after N packets\n"
+	        "      --no-fraction      No fractional PDU\n"
+	        "  -s, --pkts=N           Stop after N packets\n"
 	        "  -v, --verbose 	        Enable verbose output\n"
 	        "  -l, --link             link capacity in Mbps [Default 100 Mbps]"
 	        "  -i, --iface=IFACE      MA interface\n"
-	        "  -h, --help 		        This help text\n");
+	        "  -g, --listen=IP        Listen IP [Default: 0.0.0.0]\n"
+	        "  -p, --port=PORT        Listen port [Default: 8073]\n"
+	        "  -h, --help 		        This help text\n\n");
 	filter_from_argv_usage();
 }
 
@@ -95,45 +100,28 @@ int main (int argc , char **argv) {
 		program_name = argv[0];
 	}
 
-	int noBins, level, payLoadSize; // Bits Per Second calculation variables [BPScv]
-	//int noBins - number of bins (histogram bar width) , calculated automatically
-	//int level -  at what level should bitrate be calculated, given by user
-	// int payLoadSize  - how large is number of bits covered by the desired level, automatically calculated
-
-	double linkCapacity, sampleFrequency, sampleValue;
+	int level = 0; // Bits Per Second calculation variables [BPScv]
+	double linkCapacity = 10e6; // initializing as 10 Mbps
+	double sampleFrequency = 1.0;
 	int triggerPoint = 0; //When do we do the sampling
 	FILE* verbose = NULL;
-	int sampleCounter ; //BPScv Consider alter to double
-	qd_real tSample, nextSample,lastEvent, pktArrivalTime; // when does the next sample occur, sample interval time
-	qd_real *BINS, *ST;
-	dropCount =0; // initializing packets dropped
-	fractionalPDU = 1;
-	sampleFrequency = 1;
-	tSample = 1/(double)sampleFrequency;
-	linkCapacity=10e6; // initializing as 10 Mbps
-	level = 0;
-
-	double linkC = 100.0 ;
-
-	/* Libcap 0.7 variables */
-	struct cap_header *caphead;
+	uint64_t sampleCounter = 0;
+	qd_real tSample = 1.0/sampleFrequency;
+	qd_real nextSample,lastEvent, pktArrivalTime; // when does the next sample occur, sample interval time
+	uint64_t dropCount = 0; // number of packets that have been dropped
+	qd_real timeOffset;
+	const char* listen_ip = "0.0.0.0";
+	int listen_port = 8073;
+	double linkC = 100.0;
+	int ret = 0;
+	uint64_t max_packets = 0;
 	struct filter myFilter; // filter to filter arguments
-	stream_t* inStream; // stream to read from
 	const char* iface = NULL;
-	double pktCount = 0; // counting number of packets
-	struct timeval timeout = {1,0} ; // initilizing timeval to be passed on to
-
-	// end of libcap 0.7 variables
-
-	double pkts;
 
 	if ((filter_from_argv(&argc,argv, &myFilter)) != 0) {
 		fprintf (stderr, "could not create filter ");
 		exit(1);
 	}
-
-	pkts = -1;
-	pktCount = 0;
 
 	if ( argc < 2 ) {
 		printf ("use %s -h or --help for help \n" , argv[0]);
@@ -141,7 +129,7 @@ int main (int argc , char **argv) {
 	}
 
 	int op, option_index = -1;
-	while ( (op=getopt_long(argc, argv, "hvl:i:m:n:q:p:", long_options, &option_index)) != -1 ){
+	while ( (op=getopt_long(argc, argv, "hvl:i:m:n:q:p:g:p:", long_options, &option_index)) != -1 ){
 		switch (op) {
 		case '?': /* error */
 			return 1;
@@ -182,12 +170,24 @@ int main (int argc , char **argv) {
 			cout << " Link Capacity input = " << linkC << " bps\n";
 			break;
 
-		case 'p': /* --pkts */
-			pkts = atoi (optarg);
+		case 'z': /* --no-fraction */
+			fractionalPDU = 0;
+			break;
+
+		case 's': /* --pkts */
+			max_packets = atoi (optarg);
 			break;
 
 		case 'i' : /* --iface */
 			iface = optarg;
+			break;
+
+		case 'g': /* --listen */
+			listen_ip = optarg;
+			break;
+
+		case 'p': /* --port */
+			listen_port = atoi(optarg);
 			break;
 
 		case 'h': /* --help */
@@ -205,45 +205,57 @@ int main (int argc , char **argv) {
 		}
 	}
 
-	/* discard by default */
+	/* Verbose output is discarded by default */
 	if ( !verbose ){
 		verbose = fopen("/dev/null", "r");
 	}
 
-	noBins =  (ceil ((double)(1514*8)/(double) linkCapacity/to_double(tSample)));
-	noBins+= 2; // +1 to account for edge values, second +1 to account for n+1 samples.
-	BINS = new qd_real [noBins];
-	ST =  new qd_real [noBins];
-//to_double is a qd function that converts a qd to int type. else we get an error
+	/* Initialize sample bins */
+	const size_t noBins = (ceil ((double)(1514*8)/(double) linkCapacity/to_double(tSample))) + 2;  // +1 to account for edge values, second +1 to account for n+1 samples.
+	qd_real* BINS = new qd_real [noBins];
+	qd_real* ST =  new qd_real [noBins];
 
+	/* Show settings */
 	fprintf(verbose, "Longest transfer time = %f\n", (double)1514*8 /(double) linkCapacity);
 	fprintf(verbose, "tT/tStamp = %f\n", to_double(1514*8 /(double) linkCapacity/tSample));
-	fprintf(verbose, "we need %d bins\n", noBins);
+	fprintf(verbose, "we need %zd bins\n", noBins);
 	fprintf(verbose, "Allocating memory buffer\n");
 	fprintf(verbose, "sampleFrequency = %fHz %f\n", sampleFrequency, to_double(tSample));
 	fprintf(verbose, "LinkCapacity = %fMbps\n", linkCapacity/1e6);
 
 	/* Open source stream */
+	stream_t* inStream; // stream to read from
 	if ( stream_from_getopt(&inStream, argv, optind, argc, iface, NULL) != 0 ){
 		return 1; /* error already shown */
 	}
 
+	/* Get stats handle */
+	const stream_stat_t* stats = stream_get_stat(inStream);
+
+	/* Display stream information (version, mampid, etc) */
 	stream_print_info(inStream, verbose);
+
+	/* Initialize conserver */
+	conserver_t srv;
+	dataset_t ds;
+	if ( (ret=conserver_init(&srv, listen_ip, listen_port)) != 0 ){
+		fprintf(stderr, "Failed to initialize conserver (%d): %s\n", ret, conserver_get_error());
+		return 1;
+	}
+	if ( (ret=conserver_add(srv, &ds, "bitrate")) != 0 ){
+		fprintf(stderr, "Failed to create dataset (%d): %s\n", ret, conserver_get_error());
+		return 1;
+	}
 
 	// begin packet processing
 
-	//while  ( (ret = stream_read (src,dataPtr,NULL,&tv)) == 0){
-
 	///////////////////// HERE ONWARS LOOK INTOOOOO
 	//Begin Packet processing
-	// rpStatus=read_post(&inStream,dataPtr,myfilter);
-	long ret = 0; // Here the pointer to first packet is already retuned , so extract the timing information from the packet
-	//*dataPtr=(inStream->buffer+inStream->readPos);
-
 	fprintf(verbose, "Going to read first\n");
 
+	struct cap_header *caphead;
 	if ( (ret=stream_read (inStream, &caphead, &myFilter, NULL)) != 0 ){
-		fprintf(stderr, "stream_read() returned %ld: %s\n", ret, caputils_error_string(ret));
+		fprintf(stderr, "stream_read() returned %d: %s\n", ret, caputils_error_string(ret));
 		return 1;
 	}
 
@@ -265,31 +277,28 @@ int main (int argc , char **argv) {
 	  printf("Bins=\n");
 	*/
 
-	for(op=0;op<noBins;op++){
-		ST[op]=nextSample;
-		BINS[op]=0.0;
+	for( unsigned int i = 0; i < noBins; i++ ){
+		ST[i]=nextSample;
+		BINS[i]=0.0;
 		nextSample-=tSample; // Since these will have taken place.
-		//  cout << "[" << op << "] <" << setiosflags(ios::fixed) << setprecision(12) << (double)ST[op] << " = " << BINS[op]  << endl;
-		}
-
-	sampleCounter=0;
-	payLoadSize=0;
+	}
 
 	if ( (ret=stream_read (inStream, &caphead, &myFilter, NULL)) != 0 ){
-		fprintf(stderr, "stream_read() returned %ld: %s\n", ret, caputils_error_string(ret));
+		fprintf(stderr, "stream_read() returned %d: %s\n", ret, caputils_error_string(ret));
 		return 1;
 	}
 
 	fprintf(verbose, "Read secondary packet\n");
 
-	while (ret == 0){
-		payLoadSize=0;
+	while ( keep_running ){
+		int payLoadSize = 0;
 		if(pktArrivalTime<ST[0]) { /* Packet arrived first */
 			//  cout << "pkt["<< pktCount << "]";
 			if(pktArrivalTime<ST[1]) { /* Packet should have arrived earlier, dropping (pktArrival CAN handle this partially */
 				//	  cout << caphead->nic << ":" << caphead->ts.tv_sec << "." << caphead->ts.tv_psec << "\t";
 				//	  cout << "Dropping packet!!!" << endl;
 				dropCount++;
+				printf("dropping pkt:%f st[0]: %f st[1]: %f\n", to_double(pktArrivalTime), to_double(ST[0]), to_double(ST[1]));
 			} else {                   /* Normal packet treatment */
 				/* Begin by extracting the interesting information. */
 				//    printf("%s:%f.%f:LINK(%4d): \t",caphead->nic,caphead->ts.tv_sec,caphead->ts.tv_psec, caphead->len);
@@ -299,49 +308,59 @@ int main (int argc , char **argv) {
 				lastEvent=pktArrivalTime;
 			}  // End Normal packet treatment.
 
-			if(pkts>0 && (pktCount+1)>pkts) {
+			if ( max_packets > 0 && ( stats->matched + 1 ) > max_packets) {
 				/* Read enough pkts lets break. */
 				break;
 			}
 
-			do {
-				struct timeval tv = timeout;
-				ret = stream_read (inStream, &caphead, &myFilter, &tv);
-				if ( ret == EAGAIN ) continue;
-				if ( ret == 0 ) break;
-				else {
-					fprintf(stderr, "stream_read() returned %ld: %s\n", ret, caputils_error_string(ret));
-					return 1;
-				}
-			} while(1);
+			/* MA packets arrive at least once per second if there is data (and no packets if there wasn't any) */
+			struct timeval tv = {1,0};
+			ret = stream_read (inStream, &caphead, NULL, &tv);
+			if ( ret == -1 ){
+				keep_running = 0; /* finished */
+				continue;
+			} else if ( ret == EAGAIN ){ /* timeout */
+				goto do_sample; /* f#ing spagetti, sorry */
+			} else if ( ret != 0 ){ /* error */
+				fprintf(stderr, "stream_read() returned %d: %s\n", ret, caputils_error_string(ret));
+				return 1;
+			}
+
+			//usleep(300);
 
 			pktArrivalTime=(double)caphead->ts.tv_sec+(double)caphead->ts.tv_psec/PICODIVIDER;
 			pktArrivalTime-=timeOffset;
-			pktCount++;
-		} else { /* Sample shoud occur */
+		} else { /* Sample should occur */
+		  do_sample:
 			lastEvent=ST[noBins-1];
-			sampleValue=sampleBINS(BINS,ST,noBins,to_double(tSample),linkCapacity);
-			//	cout << "[" << sampleCounter <<"]  " << setiosflags(ios::fixed) << setprecision(12) << (double)(lastEvent+timeOffset)<< ": " << sampleValue << " bps " << endl;
-			cout << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset)<< ":" << sampleValue << endl;
+			const double sampleValue=sampleBINS(BINS,ST,noBins,to_double(tSample),linkCapacity);
+			//cout << "[" << sampleCounter <<"]  " << setiosflags(ios::fixed) << setprecision(12) << to_double(lastEvent+timeOffset)<< ": " << sampleValue << " bps " << endl;
+			//cout << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset)<< ":" << sampleValue << endl;
+
+			char msg[64];
+			const int bytes = snprintf(msg, 64, "%.6f;%d", to_double(lastEvent+timeOffset)*100, (int)sampleValue);
+
+			fprintf(stderr, "%s\n", msg);
+			conserver_push(&ds, msg, bytes);
 			sampleCounter++;
 		}
 	}//End Packet processing
-	//  cout << "Terminated loop. Cleaning up." << endl;
+	cout << "Terminated loop. Cleaning up." << endl;
 
-	for(op=0;op<noBins+2;op++){
+	for( unsigned int i = 0; i < noBins + 2; i++ ){
 		lastEvent=ST[noBins-1];
-		sampleValue=sampleBINS(BINS,ST,noBins,to_double(tSample),linkCapacity);
+		const double sampleValue = sampleBINS(BINS,ST,noBins,to_double(tSample),linkCapacity);
 		//      cout << "[" << sampleCounter <<"]" << setiosflags(ios::fixed) << setprecision(12) << (double)(lastEvent+timeOffset) << ": " << sampleValue << endl;
-		cout << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset) << ":" << sampleValue << endl;
+		cout << "foo" << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset) << ":" << sampleValue << endl;
 		sampleCounter++;
-
 	}
 
 	delete(ST);
 	delete(BINS);
 
 	stream_close(inStream);
-	fprintf(verbose, "There was a total of %g pkts that matched the filter.\n",pktCount);
+	filter_close(&myFilter);
+	fprintf(verbose, "There was a total of %"PRIu64" pkts that matched the filter.\n", stats->matched);
 
 	return 0;
 }
@@ -386,7 +405,7 @@ int main (int argc , char **argv) {
 
 
 */
-void pktArrival(double tArr, int pktSize, double linkCapacity,qd_real *BITS,qd_real *STy,int bins, double tSample){
+static void pktArrival(double tArr, int pktSize, double linkCapacity,qd_real *BITS,qd_real *STy,int bins, double tSample){
 	qd_real tTransfer, tStart;              // Transfer time of packet, start time of packet
 	int j;                                  // Yee, can it be a index variable..
 	qd_real bits;                           // Temporary variable, holds number of bits in a, or parts of, sample interval
@@ -542,7 +561,7 @@ void pktArrival(double tArr, int pktSize, double linkCapacity,qd_real *BITS,qd_r
 */
 
 
-double sampleBINS(qd_real *BITS, qd_real *STy, int bins,double tSample, double linkCapacity) {
+static double sampleBINS(qd_real *BITS, qd_real *STy, int bins,double tSample, double linkCapacity) {
   double bitEst;
   int i;
   qd_real tSample2=tSample;
@@ -597,57 +616,50 @@ double sampleBINS(qd_real *BITS, qd_real *STy, int bins,double tSample, double l
 */
 //caphead is new one, data is old.
 
-int payLoadExtraction(int level, char* data)
+static int payLoadExtraction(int level, char* data)
 {
 #ifdef debug
-  // cout << "->payLoadExtraction(" << level <<", data)" << endl;
+	// cout << "->payLoadExtraction(" << level <<", data)" << endl;
 #endif
 
-  int payLoadSize=0;
-  struct ethhdr *ether=0;
-  struct ip *ip_hdr=0;
-  struct tcphdr *tcp=0;
-  struct udphdr *udp=0;
-   cap_header *caphead=(cap_header*)data;
+	int payLoadSize=0;
+	struct ethhdr *ether=0;
+	struct ip *ip_hdr=0;
+	struct tcphdr *tcp=0;
+	struct udphdr *udp=0;
+	cap_header *caphead=(cap_header*)data;
 
-  if(level==0) { payLoadSize=caphead->len; };                             // payload size at physical (ether+network+transport+app)
-  ether=(struct ethhdr*)(data +sizeof(cap_header));
-  if(level==1) { payLoadSize=caphead->len-sizeof(struct ethhdr); }; // payload size at link  (network+transport+app)
+	if(level==0) { payLoadSize=caphead->len; };                             // payload size at physical (ether+network+transport+app)
+	ether=(struct ethhdr*)(data +sizeof(cap_header));
+	if(level==1) { payLoadSize=caphead->len-sizeof(struct ethhdr); }; // payload size at link  (network+transport+app)
 
- switch(ntohs(ether->h_proto)) {
-  case ETHERTYPE_IP:/* Packet contains an IP, PASS TWO! */
-    ip_hdr=(struct ip*)(data +sizeof(cap_header)+sizeof(struct ethhdr));
-    if(level==2) { payLoadSize=ntohs(ip_hdr->ip_len)-4*ip_hdr->ip_hl; }; // payload size at network  (transport+app)
-    switch(ip_hdr->ip_p) { /* Test what transport protocol is present */
-    case IPPROTO_TCP: /* TCP */
-      tcp=(struct tcphdr*)(data +sizeof(cap_header)+sizeof(struct ethhdr)+4*ip_hdr->ip_hl);
-      if(level==3) { payLoadSize=ntohs(ip_hdr->ip_len)-4*tcp->doff-4*ip_hdr->ip_hl; };  // payload size at transport  (app)
-      break;
-    case IPPROTO_UDP: /* UDP */
-      udp=(struct udphdr*)(data +sizeof(cap_header)+sizeof(struct ethhdr)+4*ip_hdr->ip_hl);
-      if(level==3) { payLoadSize=(u_int16_t)(ntohs(udp->len)-8); };                     // payload size at transport  (app)
-      break;
-    default:
-      if(level==3) { payLoadSize=(u_int16_t)(ntohs(udp->len)-8); };                     // payload size at transport  (app)
-                       printf("Unknown transport protocol: %d \n", ip_hdr->ip_p);
-      break;
-   } //End switch(ip_hdr->ip_p)
-    break;
-  default:      /* Packet contains unknown link . */
-    if(level==2) { payLoadSize=ntohs(ip_hdr->ip_len)-4*ip_hdr->ip_hl; };                         // payload size at network  (transport+app)
-   // printf("Unknown link type 0x%0x \n", ntohs(ether->h_proto));
-   break;
-  }//End switch(ntohs(ether->ether_type))
+	switch(ntohs(ether->h_proto)) {
+	case ETHERTYPE_IP:/* Packet contains an IP, PASS TWO! */
+		ip_hdr=(struct ip*)(data +sizeof(cap_header)+sizeof(struct ethhdr));
+		if(level==2) { payLoadSize=ntohs(ip_hdr->ip_len)-4*ip_hdr->ip_hl; }; // payload size at network  (transport+app)
+		switch(ip_hdr->ip_p) { /* Test what transport protocol is present */
+		case IPPROTO_TCP: /* TCP */
+			tcp=(struct tcphdr*)(data +sizeof(cap_header)+sizeof(struct ethhdr)+4*ip_hdr->ip_hl);
+			if(level==3) { payLoadSize=ntohs(ip_hdr->ip_len)-4*tcp->doff-4*ip_hdr->ip_hl; };  // payload size at transport  (app)
+			break;
+		case IPPROTO_UDP: /* UDP */
+			udp=(struct udphdr*)(data +sizeof(cap_header)+sizeof(struct ethhdr)+4*ip_hdr->ip_hl);
+			if(level==3) { payLoadSize=(u_int16_t)(ntohs(udp->len)-8); };                     // payload size at transport  (app)
+			break;
+		default:
+			if(level==3) { payLoadSize=(u_int16_t)(ntohs(udp->len)-8); };                     // payload size at transport  (app)
+			//printf("Unknown transport protocol: %d \n", ip_hdr->ip_p);
+			break;
+		} //End switch(ip_hdr->ip_p)
+		break;
+	default:      /* Packet contains unknown link . */
+		if(level==2) { payLoadSize=ntohs(ip_hdr->ip_len)-4*ip_hdr->ip_hl; };                         // payload size at network  (transport+app)
+		// printf("Unknown link type 0x%0x \n", ntohs(ether->h_proto));
+		break;
+	}//End switch(ntohs(ether->ether_type))
 
- //payLoadSize=caphead->len;
- // cout << "<-payLoadExtraction:" << payLoadSize << " ." << endl;
+	//payLoadSize=caphead->len;
+	// cout << "<-payLoadExtraction:" << payLoadSize << " ." << endl;
 
-  return payLoadSize;
+	return payLoadSize;
 }
-
-
-
-
-//370 in 370 a printf statement is enabled, and in 694 printf is disabled. 364 ret == 0
-
-
