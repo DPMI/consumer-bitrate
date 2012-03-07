@@ -8,6 +8,8 @@
 //comments
 #define pdebug() printf("########## %s %d \n",_FILE_,_LINE_);
 #define __STDC_FORMAT_MACROS
+//#define debug_sample
+//#define debug
 
 #include <caputils/caputils.h>
 #include <caputils/stream.h>
@@ -45,7 +47,7 @@ using namespace std;
 #define ETHERTYPE_IPV6 0x86dd
 #endif /* ETHERTYPE_IPV6 */
 
-static void pktArrival (double tArr, int pktSize, double linkCapacity,qd_real *BITS, qd_real *ST, int bins, double tSample);
+static void pktArrival (qd_real tArr, int pktSize, double linkCapacity,qd_real *BITS, qd_real *ST, int bins, double tSample);
 static double sampleBINS (qd_real *BITS, qd_real * ST, int bins, double tSample, double linkCapacity);
 static int payLoadExtraction (int level, const cap_head* caphead);
 
@@ -215,7 +217,7 @@ int main (int argc , char **argv) {
 	}
 
 	/* Initialize sample bins */
-	const size_t noBins = (ceil ((double)(1514*8)/(double) linkCapacity/to_double(tSample))) + 2;  // +1 to account for edge values, second +1 to account for n+1 samples.
+	const size_t noBins = (ceil ((double)(1514*8)/(double) linkCapacity/to_double(tSample))) + 2 +sampleFrequency ;  // +1 to account for edge values, second +1 to account for n+1 samples.
 	qd_real* BINS = new qd_real [noBins];
 	qd_real* ST =  new qd_real [noBins];
 
@@ -229,7 +231,7 @@ int main (int argc , char **argv) {
 
 	/* Open source stream */
 	stream_t inStream; // stream to read from
-	if ( stream_from_getopt(&inStream, argv, optind, argc, iface, NULL) != 0 ){
+	if ( stream_from_getopt(&inStream, argv, optind, argc, iface, NULL,0) != 0 ){
 		return 1; /* error already shown */
 	}
 
@@ -275,11 +277,9 @@ int main (int argc , char **argv) {
 		nextSample=floor(pktArrivalTime+tSample/2.0);
 	}
 
-	/*
-	  cout << "First packet arrives at " << setiosflags(ios::fixed) << setprecision(12) << (double)(pktArrivalTime+timeOffset) << endl;
-	  printf("                        %lu.%06llu \n",caphead->ts.tv_sec,caphead->ts.tv_psec);
-	  printf("Bins=\n");
-	*/
+	fprintf(verbose,"First packet arrives at %f.\n",to_double(pktArrivalTime+timeOffset));
+	fprintf(verbose,"                        %lu.%06llu \n",caphead->ts.tv_sec,caphead->ts.tv_psec);
+	
 
 	for( unsigned int i = 0; i < noBins; i++ ){
 		ST[i]=nextSample;
@@ -293,7 +293,7 @@ int main (int argc , char **argv) {
 	}
 
 	fprintf(verbose, "Read secondary packet\n");
-
+	static int readPktCounter=1;
 	while ( keep_running ){
 		int payLoadSize = 0;
 		if(pktArrivalTime<ST[0]) { /* Packet arrived first */
@@ -302,13 +302,14 @@ int main (int argc , char **argv) {
 				//	  cout << caphead->nic << ":" << caphead->ts.tv_sec << "." << caphead->ts.tv_psec << "\t";
 				//	  cout << "Dropping packet!!!" << endl;
 				dropCount++;
-				printf("dropping pkt:%f st[0]: %f st[1]: %f\n", to_double(pktArrivalTime), to_double(ST[0]), to_double(ST[1]));
+				printf("\n[%d] dropping pkt:%f st[0]: %f st[1]: %f, timeOffSet = %f\n", readPktCounter,to_double(pktArrivalTime), to_double(ST[0]), to_double(ST[1]),to_double(timeOffset));
+				printf("(dropping)Ppkt arrived:%lu.%09llu \n", caphead->ts.tv_sec,caphead->ts.tv_psec);
 			} else {                   /* Normal packet treatment */
 				/* Begin by extracting the interesting information. */
 				//    printf("%s:%f.%f:LINK(%4d): \t",caphead->nic,caphead->ts.tv_sec,caphead->ts.tv_psec, caphead->len);
 				//     cout << caphead->nic << ":" << caphead->ts.tv_sec << "." << caphead->ts.tv_psec << ":LINK(" << caphead->len << ") \t";
 				payLoadSize = payLoadExtraction(level, caphead);
-				pktArrival(to_double(pktArrivalTime),payLoadSize,linkCapacity, BINS,ST, noBins,to_double(tSample));
+				pktArrival(pktArrivalTime,payLoadSize,linkCapacity, BINS,ST, noBins,to_double(tSample));
 				lastEvent=pktArrivalTime;
 			}  // End Normal packet treatment.
 
@@ -319,22 +320,29 @@ int main (int argc , char **argv) {
 
 			/* MA packets arrive at least once per second if there is data (and no packets if there wasn't any) */
 			struct timeval tv = {1,0};
-			ret = stream_read (inStream, &caphead, NULL, &tv);
+			ret = stream_read (inStream, &caphead, &myFilter, NULL);
 			if ( ret == -1 ){
 				keep_running = 0; /* finished */
 				continue;
 			} else if ( ret == EAGAIN ){ /* timeout */
+			  printf("WTF ! ! ? ? ! ? ! ? ! ? ! ? ! ? ! ? ! ? ! ? !\n");
 				goto do_sample; /* f#ing spagetti, sorry */
 			} else if ( ret != 0 ){ /* error */
 				fprintf(stderr, "stream_read() returned %d: %s\n", ret, caputils_error_string(ret));
 				return 1;
 			}
-
+			readPktCounter++;
 			//usleep(300);
 
-			pktArrivalTime=(double)caphead->ts.tv_sec+(double)caphead->ts.tv_psec/PICODIVIDER;
+			pktArrivalTime=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)caphead->ts.tv_psec/PICODIVIDER;
 			pktArrivalTime-=timeOffset;
+#ifdef debug			
+			printf("\n%d pktArrival:%f st[0]: %f st[1]: %f (nic = %s)\n",readPktCounter, to_double(pktArrivalTime), to_double(ST[0]), to_double(ST[1]), caphead->nic);
+#endif 
 		} else { /* Sample should occur */
+#ifdef debug
+		  printf("SAMPLE ME? %f < %f \n", to_double(pktArrivalTime),to_double(ST[0]));
+#endif
 		  do_sample:
 			lastEvent=ST[noBins-1];
 			const double sampleValue=sampleBINS(BINS,ST,noBins,to_double(tSample),linkCapacity);
@@ -342,29 +350,35 @@ int main (int argc , char **argv) {
 			//cout << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset)<< ":" << sampleValue << endl;
 
 			char msg[64];
-			const int bytes = snprintf(msg, 64, "%.6f;%d", to_double(lastEvent+timeOffset)*100, (int)sampleValue);
+			const int bytes = snprintf(msg, 64, "%.6f:%.6f", to_double(lastEvent+timeOffset), sampleValue);
 
 			fprintf(stderr, "%s\n", msg);
+			fflush(stderr);
 			conserver_push(&ds, msg, bytes);
 			sampleCounter++;
 		}
 	}//End Packet processing
+#ifdef debug
 	cout << "Terminated loop. Cleaning up." << endl;
-
+#endif
 	for( unsigned int i = 0; i < noBins + 2; i++ ){
 		lastEvent=ST[noBins-1];
 		const double sampleValue = sampleBINS(BINS,ST,noBins,to_double(tSample),linkCapacity);
 		//      cout << "[" << sampleCounter <<"]" << setiosflags(ios::fixed) << setprecision(12) << (double)(lastEvent+timeOffset) << ": " << sampleValue << endl;
-		cout << "foo" << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset) << ":" << sampleValue << endl;
+
+		cout << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset) << ":" << sampleValue << endl;
 		sampleCounter++;
 	}
 
 	delete(ST);
 	delete(BINS);
 
+
+
+	fprintf(verbose, "There was a total of %"PRIu64" pkts that matched the filter.\n", stats->matched);
+
 	stream_close(inStream);
 	filter_close(&myFilter);
-	fprintf(verbose, "There was a total of %"PRIu64" pkts that matched the filter.\n", stats->matched);
 
 	return 0;
 }
@@ -409,7 +423,7 @@ int main (int argc , char **argv) {
 
 
 */
-static void pktArrival(double tArr, int pktSize, double linkCapacity,qd_real *BITS,qd_real *STy,int bins, double tSample){
+static void pktArrival(qd_real tArr, int pktSize, double linkCapacity,qd_real *BITS,qd_real *STy,int bins, double tSample){
 	qd_real tTransfer, tStart;              // Transfer time of packet, start time of packet
 	int j;                                  // Yee, can it be a index variable..
 	qd_real bits;                           // Temporary variable, holds number of bits in a, or parts of, sample interval
@@ -421,7 +435,7 @@ static void pktArrival(double tArr, int pktSize, double linkCapacity,qd_real *BI
 	tStart=tArr-tTransfer;                  // Estimate when the packet started arriving
 
 #ifdef debug
-	cout << "  [tStart " << setiosflags(ios::fixed) << setprecision(12) << (double)tStart << " -- tTrfs " << (double)tTransfer << "  ---- " << (double)tArr << " tT/tS " << (double)tTransfer/tSample << endl;
+	cout << "  [tStart " << setiosflags(ios::fixed) << setprecision(12) << to_double(tStart) << " -- tTrfs " << to_double(tTransfer) << "  ---- " << (tArr) << " tT/tS " << to_double(tTransfer)/(tSample) << endl;
 
 #endif
 	if(fractionalPDU==0){        // Do not consider fractional pdus, just wack them in the array.
@@ -572,7 +586,7 @@ static double sampleBINS(qd_real *BITS, qd_real *STy, int bins,double tSample, d
   bitEst=to_double(BITS[bins-1]/tSample2);    // Calculate for the bit rate estimate for the last bin, which cannot get any more samples.
 
 #ifdef debug_sample
-  printf("sample()\t at %12.12f \n",STy[0]);
+  printf("sample()\t at %f \n",to_double(STy[0]));
 #endif
   if(bitEst/1e6>linkCapacity ||  bitEst<0.0) {
     printf("########bit estimation of %f Mbps\n", bitEst/1e6);
@@ -590,10 +604,10 @@ static double sampleBINS(qd_real *BITS, qd_real *STy, int bins,double tSample, d
 #ifdef debug_sample
   printf("--bins--\n");
   for(i=0;i<bins;i++){
-    cout << "[" << i << "]" << setiosflags(ios::fixed) << setprecision(12) << (double)STy[i] << "=  " << (double)BITS[i] << endl;
+    cout << "[" << i << "]" << setiosflags(ios::fixed) << setprecision(12) << to_double(STy[i]) << "=  " << to_double(BITS[i]) << endl;
   }
 
-  cout << " next at " << setiosflags(ios::fixed) << setprecision(12) << (double)STy[0] << "<-sample()" << endl;
+  cout << " next at " << setiosflags(ios::fixed) << setprecision(12) << to_double(STy[0]) << "<-sample()" << endl;
 #endif
 
 
