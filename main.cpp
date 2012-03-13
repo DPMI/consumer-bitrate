@@ -37,13 +37,6 @@ using namespace std;
 
 #define APP_VERSION_MAJOR 0
 #define APP_VERSION_MINOR 2
-#define PICODIVIDER (double)1.0e12
-#define STPBRIDGES 0x0026
-#define CDPVTP 0x016E
-
-#ifndef ETHERTYPE_IPV6 /* libc might not provide this if it is missing ipv6 support */
-#define ETHERTYPE_IPV6 0x86dd
-#endif /* ETHERTYPE_IPV6 */
 
 static void pktArrival (double tArr, int pktSize, double linkCapacity,qd_real *BITS, qd_real *ST, int bins, double tSample);
 static double sampleBINS (qd_real *BITS, qd_real * ST, int bins, double tSample, double linkCapacity);
@@ -229,7 +222,7 @@ int main (int argc , char **argv) {
 
 	/* Open source stream */
 	stream_t inStream; // stream to read from
-	if ( stream_from_getopt(&inStream, argv, optind, argc, iface, NULL) != 0 ){
+	if ( stream_from_getopt(&inStream, argv, optind, argc, iface, NULL, program_name, 0) != 0 ){
 		return 1; /* error already shown */
 	}
 
