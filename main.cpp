@@ -53,7 +53,7 @@ static struct option long_options [] = {
 	{"no-fraction",     no_argument,       0, 'z'},
 	{"level",           required_argument, 0 ,'q'},
 	{"link",	          required_argument, 0, 'l'},
-	{"help",            required_argument, 0, 'h'},
+	{"help",            no_argument, 0, 'h'},
 	{"iface",           required_argument, 0, 'i'},
 	{"verbose",         required_argument, 0, 'v'},
 	{"listen",          required_argument, 0, 'g'},
