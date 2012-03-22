@@ -355,9 +355,11 @@ int main (int argc , char **argv) {
 	delete(ST);
 	delete(BINS);
 
+	fprintf(verbose, "There was a total of %"PRIu64" pkts read.\n", stats->read);
+	fprintf(verbose, "There was a total of %"PRIu64" pkts matched .\n", stats->matched);
+
 	stream_close(inStream);
 	filter_close(&myFilter);
-	fprintf(verbose, "There was a total of %"PRIu64" pkts that matched the filter.\n", stats->matched);
 
 	return 0;
 }
