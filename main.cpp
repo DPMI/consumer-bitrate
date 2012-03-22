@@ -68,9 +68,9 @@ static void show_usage(const char* program_name){
 	printf("(C) 2012 Vamsi Krishna Konakalla\n");
 	printf("usage: %s [OPTION]... INPUT\n", program_name);
 	printf ("  -m, --samplefrequency  Sample frequency in Hz default [1 Hz]\n"
-	        "  -n, --triggerpoint	    If enabled Sampling will start 1/(2*fs) s prior to the first packet.\n"
-	        "   	  		              otherwise it shall start floor( 1/(2*fs)) s  prior to the first packet.\n"
-	        "  -q, --level 		        Level to calculate bitrate {physical (default), link, network, transport and application}\n"
+	        "  -n, --triggerpoint     If enabled Sampling will start 1/(2*fs) s prior to the first packet.\n"
+	        "                         otherwise it shall start floor( 1/(2*fs)) s  prior to the first packet.\n"
+	        "  -q, --level            Level to calculate bitrate {physical (default), link, network, transport and application}\n"
 	        "                         At level N , payload of particular layer is only considered, use filters to select particular streams.\n"
 	        "                         To calculate the bitrate at physical , use physical layer, Consider for Network layer use [-q network]\n"
 	        "                         It shall contain transport protocol header + payload\n"
@@ -81,12 +81,12 @@ static void show_usage(const char* program_name){
 	        "                         Default is link\n"
 	        "      --no-fraction      No fractional PDU\n"
 	        "  -s, --pkts=N           Stop after N packets\n"
-	        "  -v, --verbose 	        Enable verbose output\n"
-	        "  -l, --link             link capacity in Mbps [Default 100 Mbps]"
+	        "  -v, --verbose          Enable verbose output\n"
+	        "  -l, --link             Link capacity in Mbps [Default 100 Mbps]\n"
 	        "  -i, --iface=IFACE      MA interface\n"
 	        "  -g, --listen=IP        Listen IP [Default: 0.0.0.0]\n"
 	        "  -p, --port=PORT        Listen port [Default: 8073]\n"
-	        "  -h, --help 		        This help text\n\n");
+	        "  -h, --help             This help text\n\n");
 	filter_from_argv_usage();
 }
 
