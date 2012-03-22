@@ -5,7 +5,7 @@
 #g++ -c bitrate_modified_feb_2012.cpp 
 #g++ -o bitrate bitrate_modified_feb_2012.o
 
-CFLAGS  += -Wall
+CFLAGS  += -Wall -g -O0
 LDFLAGS +=
 
 OBJECTd= main.o
