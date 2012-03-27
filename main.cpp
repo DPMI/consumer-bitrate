@@ -341,7 +341,7 @@ int main (int argc , char **argv) {
 			//cout << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset)<< ":" << sampleValue << endl;
 
 			char msg[64];
-			const int bytes = snprintf(msg, 64, "%.6f:%.6f", to_double(lastEvent+timeOffset), sampleValue);
+			const int bytes = snprintf(msg, 64, "%.6f;%.6f", to_double(lastEvent+timeOffset), sampleValue);
 
 			fprintf(stderr, "%s\n", msg);
 			fflush(stderr);
