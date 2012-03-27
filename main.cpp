@@ -39,13 +39,6 @@ using namespace std;
 
 #define APP_VERSION_MAJOR 0
 #define APP_VERSION_MINOR 2
-#define PICODIVIDER (double)1.0e12
-#define STPBRIDGES 0x0026
-#define CDPVTP 0x016E
-
-#ifndef ETHERTYPE_IPV6 /* libc might not provide this if it is missing ipv6 support */
-#define ETHERTYPE_IPV6 0x86dd
-#endif /* ETHERTYPE_IPV6 */
 
 static void pktArrival (qd_real tArr, int pktSize, double linkCapacity,qd_real *BITS, qd_real *ST, int bins, double tSample);
 static double sampleBINS (qd_real *BITS, qd_real * ST, int bins, double tSample, double linkCapacity);
@@ -62,7 +55,7 @@ static struct option long_options [] = {
 	{"no-fraction",     no_argument,       0, 'z'},
 	{"level",           required_argument, 0 ,'q'},
 	{"link",	          required_argument, 0, 'l'},
-	{"help",            required_argument, 0, 'h'},
+	{"help",            no_argument, 0, 'h'},
 	{"iface",           required_argument, 0, 'i'},
 	{"verbose",         required_argument, 0, 'v'},
 	{"listen",          required_argument, 0, 'g'},
@@ -75,9 +68,9 @@ static void show_usage(const char* program_name){
 	printf("(C) 2012 Vamsi Krishna Konakalla\n");
 	printf("usage: %s [OPTION]... INPUT\n", program_name);
 	printf ("  -m, --samplefrequency  Sample frequency in Hz default [1 Hz]\n"
-	        "  -n, --triggerpoint	    If enabled Sampling will start 1/(2*fs) s prior to the first packet.\n"
-	        "   	  		              otherwise it shall start floor( 1/(2*fs)) s  prior to the first packet.\n"
-	        "  -q, --level 		        Level to calculate bitrate {physical (default), link, network, transport and application}\n"
+	        "  -n, --triggerpoint     If enabled Sampling will start 1/(2*fs) s prior to the first packet.\n"
+	        "                         otherwise it shall start floor( 1/(2*fs)) s  prior to the first packet.\n"
+	        "  -q, --level            Level to calculate bitrate {physical (default), link, network, transport and application}\n"
 	        "                         At level N , payload of particular layer is only considered, use filters to select particular streams.\n"
 	        "                         To calculate the bitrate at physical , use physical layer, Consider for Network layer use [-q network]\n"
 	        "                         It shall contain transport protocol header + payload\n"
@@ -88,12 +81,12 @@ static void show_usage(const char* program_name){
 	        "                         Default is link\n"
 	        "      --no-fraction      No fractional PDU\n"
 	        "  -s, --pkts=N           Stop after N packets\n"
-	        "  -v, --verbose 	        Enable verbose output\n"
-	        "  -l, --link             link capacity in Mbps [Default 100 Mbps]"
+	        "  -v, --verbose          Enable verbose output\n"
+	        "  -l, --link             Link capacity in Mbps [Default 100 Mbps]\n"
 	        "  -i, --iface=IFACE      MA interface\n"
 	        "  -g, --listen=IP        Listen IP [Default: 0.0.0.0]\n"
 	        "  -p, --port=PORT        Listen port [Default: 8073]\n"
-	        "  -h, --help 		        This help text\n\n");
+	        "  -h, --help             This help text\n\n");
 	filter_from_argv_usage();
 }
 
@@ -118,7 +111,6 @@ int main (int argc , char **argv) {
 	qd_real timeOffset;
 	const char* listen_ip = "0.0.0.0";
 	int listen_port = 8073;
-	double linkC = 100.0;
 	int ret = 0;
 	uint64_t max_packets = 0;
 	struct filter myFilter; // filter to filter arguments
@@ -172,8 +164,7 @@ int main (int argc , char **argv) {
 			break;
 
 		case 'l': /* --link */
-			linkC = atof (optarg);
-			cout << " Link Capacity input = " << linkC << " bps\n";
+			linkCapacity = atof (optarg) * 1e6;
 			break;
 
 		case 'z': /* --no-fraction */
@@ -231,7 +222,7 @@ int main (int argc , char **argv) {
 
 	/* Open source stream */
 	stream_t inStream; // stream to read from
-	if ( stream_from_getopt(&inStream, argv, optind, argc, iface, NULL,0) != 0 ){
+	if ( stream_from_getopt(&inStream, argv, optind, argc, iface, NULL, program_name, 0) != 0 ){
 		return 1; /* error already shown */
 	}
 
@@ -278,8 +269,8 @@ int main (int argc , char **argv) {
 	}
 
 	fprintf(verbose,"First packet arrives at %f.\n",to_double(pktArrivalTime+timeOffset));
-	fprintf(verbose,"                        %lu.%06llu \n",caphead->ts.tv_sec,caphead->ts.tv_psec);
-	
+	fprintf(verbose,"                        %d.%"PRIu64"\n",caphead->ts.tv_sec,caphead->ts.tv_psec);
+
 
 	for( unsigned int i = 0; i < noBins; i++ ){
 		ST[i]=nextSample;
@@ -303,7 +294,7 @@ int main (int argc , char **argv) {
 				//	  cout << "Dropping packet!!!" << endl;
 				dropCount++;
 				printf("\n[%d] dropping pkt:%f st[0]: %f st[1]: %f, timeOffSet = %f\n", readPktCounter,to_double(pktArrivalTime), to_double(ST[0]), to_double(ST[1]),to_double(timeOffset));
-				printf("(dropping)Ppkt arrived:%lu.%09llu \n", caphead->ts.tv_sec,caphead->ts.tv_psec);
+				printf("(dropping)Ppkt arrived:%d.%"PRIu64"\n", caphead->ts.tv_sec,caphead->ts.tv_psec);
 			} else {                   /* Normal packet treatment */
 				/* Begin by extracting the interesting information. */
 				//    printf("%s:%f.%f:LINK(%4d): \t",caphead->nic,caphead->ts.tv_sec,caphead->ts.tv_psec, caphead->len);
@@ -336,9 +327,9 @@ int main (int argc , char **argv) {
 
 			pktArrivalTime=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)caphead->ts.tv_psec/PICODIVIDER;
 			pktArrivalTime-=timeOffset;
-#ifdef debug			
+#ifdef debug
 			printf("\n%d pktArrival:%f st[0]: %f st[1]: %f (nic = %s)\n",readPktCounter, to_double(pktArrivalTime), to_double(ST[0]), to_double(ST[1]), caphead->nic);
-#endif 
+#endif
 		} else { /* Sample should occur */
 #ifdef debug
 		  printf("SAMPLE ME? %f < %f \n", to_double(pktArrivalTime),to_double(ST[0]));
@@ -350,7 +341,7 @@ int main (int argc , char **argv) {
 			//cout << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset)<< ":" << sampleValue << endl;
 
 			char msg[64];
-			const int bytes = snprintf(msg, 64, "%.6f:%.6f", to_double(lastEvent+timeOffset), sampleValue);
+			const int bytes = snprintf(msg, 64, "%.6f;%.6f", to_double(lastEvent+timeOffset), sampleValue);
 
 			fprintf(stderr, "%s\n", msg);
 			fflush(stderr);
@@ -373,9 +364,8 @@ int main (int argc , char **argv) {
 	delete(ST);
 	delete(BINS);
 
-
-
-	fprintf(verbose, "There was a total of %"PRIu64" pkts that matched the filter.\n", stats->matched);
+	fprintf(verbose, "There was a total of %"PRIu64" pkts read.\n", stats->read);
+	fprintf(verbose, "There was a total of %"PRIu64" pkts matched .\n", stats->matched);
 
 	stream_close(inStream);
 	filter_close(&myFilter);
