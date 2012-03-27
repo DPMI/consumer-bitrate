@@ -111,7 +111,6 @@ int main (int argc , char **argv) {
 	qd_real timeOffset;
 	const char* listen_ip = "0.0.0.0";
 	int listen_port = 8073;
-	double linkC = 100.0;
 	int ret = 0;
 	uint64_t max_packets = 0;
 	struct filter myFilter; // filter to filter arguments
@@ -165,8 +164,7 @@ int main (int argc , char **argv) {
 			break;
 
 		case 'l': /* --link */
-			linkC = atof (optarg);
-			cout << " Link Capacity input = " << linkC << " bps\n";
+			linkCapacity = atof (optarg) * 1e6;
 			break;
 
 		case 'z': /* --no-fraction */
