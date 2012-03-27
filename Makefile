@@ -8,14 +8,19 @@
 CFLAGS  += -Wall -g -O0
 LDFLAGS +=
 
-OBJECTd= main.o
-targetd= bitrate
+OBJECTd= main.o main_vamsi.o
+targetd= bitrate bitrate_vamsi
 
-all: $(OBJECTd)	
-	$(CXX) -o $(targetd) $(LDFLAGS) $(OBJECTd) $(shell pkg-config libcap_utils-0.7 libcap_filter-0.7 conserver-0.7 --libs) -lqd
+all: $(targetd)
+
+bitrate: main.o
+	$(CXX) -o $@ $(LDFLAGS) $< $(shell pkg-config libcap_utils-0.7 libcap_filter-0.7 conserver-0.7 --libs) -lqd
+
+bitrate_vamsi: bitrate_vamsi.o
+	$(CXX) -o $@ $(LDFLAGS) $< $(shell pkg-config libcap_utils-0.7 libcap_filter-0.7 conserver-0.7 --libs) -lqd
 
 clean:
-	rm -f *.o $(OBJECTd)
+	rm -f *.o $(targetd)
 
-main.o: main.cpp
-	$(CXX) $(CFLAGS) $(shell pkg-config libcap_stream-0.7 conserver-0.7 --cflags) -c main.cpp -o main.o
+%.o: %.cpp
+	$(CXX) $(CFLAGS) $(shell pkg-config libcap_stream-0.7 conserver-0.7 --cflags) -c $< -o $@
