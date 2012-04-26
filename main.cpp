@@ -57,7 +57,7 @@ qd_real ref_time;
 qd_real start_time; // has to initialise when the first packet is read
 qd_real end_time; //has to initialise till the next interval
 qd_real tSample;
-double bitrate; // make it qd_real 
+double bitrate; // make it qd_real
 double bits; // make bits as qd
 long int packets_count;
 
@@ -233,7 +233,7 @@ int main(int argc, char **argv){
 	}
 
 	filter_print(&filter, stderr, 0);
-   
+
 	int op, option_index = -1;
 	static struct option long_options[]= {
 	{"content",  no_argument,       0, 'c'},
@@ -264,7 +264,7 @@ int main(int argc, char **argv){
 			sampleFrequency = atof (optarg);
 			tSample = 1/(double) sampleFrequency;
 			break;
-	
+
 
 		case 't':
 			{
@@ -325,7 +325,7 @@ int main(int argc, char **argv){
 	signal(SIGINT, handle_sigint);
 
 	while ( keep_running ) {
-#ifdef debug 
+#ifdef debug
          cout << "New Packet \n";
 #endif
 		/* A short timeout is used to allow the application to "breathe", i.e
@@ -339,7 +339,7 @@ int main(int argc, char **argv){
 			continue; /* timeout */
 		} else if ( ret != 0 ){
 			break; /* shutdown or error */
-		} 
+		}
                 qd_real pkt1;
 				payLoadSize = payLoadExtraction(level, cp); //payload size
 #ifdef debug
@@ -353,25 +353,25 @@ int main(int argc, char **argv){
 				end_time = ref_time + tSample;
 				remaining_samplinginterval = end_time - start_time;
 				}
-                // while current timestamp - tend > sampling interval print bitrate. 
+                // while current timestamp - tend > sampling interval print bitrate.
 #ifdef debug
 		cout << setiosflags(ios::fixed) << setprecision(14) << "PKT timestamp is : " << to_double(pkt1)<<"\t"<<" End of the sample time end_time :"
-		<<to_double(end_time) <<"Difference : " <<to_double((pkt1 - end_time))  <<"\n"; 
-#endif		
+		<<to_double(end_time) <<"Difference : " <<to_double((pkt1 - end_time))  <<"\n";
+#endif
 		  while ( (to_double(pkt1) - to_double(end_time)) >= 0.0)
 		{
 		printbitrate();
-		}  
+		}
 		// estimate transfer time of the packet
 		qd_real remaining_transfertime, transfertime_packet;
 		transfertime_packet = (payLoadSize*8)/linkCapacity;
 		remaining_transfertime = transfertime_packet;
 		remaining_samplinginterval = end_time - pkt1; //added now
-#ifdef debug 
+#ifdef debug
 		cout << setiosflags(ios::fixed) << setprecision(12) << "Estimated transfer time of this packet is : " << to_double(transfertime_packet)<<"\n"<<" Estimating sampling interval left is :"
-		<<to_double(remaining_samplinginterval) <<"\n"; 
+		<<to_double(remaining_samplinginterval) <<"\n";
 		//in case packet is small the packet will not enter this loop, now handle the big packet
-#endif   		// 		
+#endif   		//
 		while (remaining_transfertime >= remaining_samplinginterval)
 		{
 #ifdef debug
@@ -379,21 +379,21 @@ int main(int argc, char **argv){
 #endif
 		bits += round(((to_double(remaining_samplinginterval))/(to_double(transfertime_packet)))*payLoadSize*8); //28 march
 		remaining_transfertime-=remaining_samplinginterval;
-#ifdef debug 		
+#ifdef debug
 		cout << setiosflags(ios::fixed) << setprecision(12) << to_double(remaining_transfertime)<<":RTT:RSI:"<< to_double(remaining_samplinginterval) <<":BITS"<<bits <<"\n";
-#endif 
+#endif
 		printbitrate(); // print bitrate -- dont forget to reset the remaining sampling interval in print_bitrate; set it to tSample; reset Bits;
-		
+
 		}
 		// handle small packets or the remaining fractional packets which are in next interval
 		bits+= round(((to_double(remaining_transfertime))/(to_double(transfertime_packet)))*payLoadSize*8);
 		remaining_samplinginterval = end_time - pkt1 - transfertime_packet;
-#ifdef debug 
+#ifdef debug
 		cout << setiosflags(ios::fixed) << setprecision(12) << to_double(remaining_transfertime)<<":RTT:RSII:"<< to_double(remaining_samplinginterval) <<":BITS"<<bits <<"\n";
 		cout << setiosflags(ios::fixed) << setprecision(12) << "Estimated sample interval after transfer is : " << to_double(remaining_samplinginterval)<<"\n";
-#endif 
+#endif
 		// handle remaining sampling interval for small packets;
-		
+
 		//fprintf(stdout, "[%4"PRIu64"]:%.4s:%.8s:", stat->matched, cp->nic, cp->mampid);
 		if( print_date == 0 ) {
 			//fprintf(stdout, "%u.", cp->ts.tv_sec);
@@ -406,7 +406,7 @@ int main(int argc, char **argv){
 
 		//fprintf(stdout, "%012"PRId64":LINK(%4d):CAPLEN(%4d):", cp->ts.tv_psec, cp->len, cp->caplen);
                 //int packetlength = cp->len;
-		
+
 
 		if ( max_packets > 0 && stat->matched >= max_packets) {
 			/* Read enough pkts lets break. */
