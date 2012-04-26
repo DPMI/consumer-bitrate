@@ -1,610 +1,84 @@
-// Functions to remember in the new libcap utilities
+//we are at ip protocol capinfo
 
-// To Open a stream:
-// int stream_open (struct stream ** stptr, const stream_addr_t* addr, const char * nic, const int port )
+//#define __STDC_FORMAT_MACROS
 
-// general usage : first obtain a stream address stream_addr_t input;
+//#ifdef HAVE_CONFIG_H
+//#include "config.h"
+//#endif /* HAVE_CONFIG_H */
 
-//comments
-#define pdebug() printf("########## %s %d \n",_FILE_,_LINE_);
-#define __STDC_FORMAT_MACROS
-//#define debug_sample
-//#define debug
-
-#include <caputils/caputils.h>
-#include <caputils/stream.h>
-#include <caputils/filter.h>
-#include <conserver/server.h>
+#include "caputils/caputils.h"
+#include "caputils/stream.h"
+#include "caputils/filter.h"
+#include "caputils/utils.h"
 
 #include <stdio.h>
-#include <inttypes.h>
-#include <net/if_arp.h>
-#include <unistd.h>
-#include <getopt.h>
-#include <time.h>
-#include <iostream>
-#include <iomanip>
-#include <string.h>
-#include <math.h>
-#include <qd/qd_real.h>
-#include <signal.h>
-#include <string>
 #include <stdlib.h>
-#include <netinet/in.h>
+#include <string.h>
+#include <inttypes.h>
+#include <time.h>
+#include <getopt.h>
+#include <errno.h>
+#include <signal.h>
+
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
-#include <cerrno>
+#include <netinet/ip_icmp.h>
+#include <sys/time.h>
+#include <netdb.h>
+#include <cstdlib>
+#include <map>
+#include <vector>
+#include <string.h>
+#include <cstring>
+#include <string>
+#include <iostream>
+#include <qd/qd_real.h>
+#include <math.h>
+#include <iomanip>
+//#define debug
+#define PICODIVIDER (double)1.0e12
+#define STPBRIDGES 0x0026
+#define CDPVTP 0x016E
+
 using namespace std;
 
-#define APP_VERSION_MAJOR 0
-#define APP_VERSION_MINOR 2
-
-static void pktArrival (qd_real tArr, int pktSize, double linkCapacity,qd_real *BITS, qd_real *ST, int bins, double tSample);
-static double sampleBINS (qd_real *BITS, qd_real * ST, int bins, double tSample, double linkCapacity);
-static int payLoadExtraction (int level, const cap_head* caphead);
-
-static int fractionalPDU = 1;
-static const char* program_name;
 static int keep_running = 1;
+static int print_content = 0;
+static int print_date = 0;
+static int max_packets = 0;
+static const char* iface = NULL;
+static struct timeval timeout = {1,0};
+static const char* program_name = NULL;
 
-static struct option long_options [] = {
-	{"pkts",            required_argument, 0, 's'},
-	{"samplefrequency", required_argument, 0 ,'m'},
-	{"triggerpoint",    required_argument, 0, 'n'},
-	{"no-fraction",     no_argument,       0, 'z'},
-	{"level",           required_argument, 0 ,'q'},
-	{"link",	          required_argument, 0, 'l'},
-	{"help",            no_argument, 0, 'h'},
-	{"iface",           required_argument, 0, 'i'},
-	{"verbose",         required_argument, 0, 'v'},
-	{"listen",          required_argument, 0, 'g'},
-	{"port",            required_argument, 0, 'p'},
-	{0, 0, 0, 0}
-};
 
-static void show_usage(const char* program_name){
-	printf("(C) 2004 Patrik Arlos <patrik.arlos@bth.se>\n");
-	printf("(C) 2012 Vamsi Krishna Konakalla\n");
-	printf("usage: %s [OPTION]... INPUT\n", program_name);
-	printf ("  -m, --samplefrequency  Sample frequency in Hz default [1 Hz]\n"
-	        "  -n, --triggerpoint     If enabled Sampling will start 1/(2*fs) s prior to the first packet.\n"
-	        "                         otherwise it shall start floor( 1/(2*fs)) s  prior to the first packet.\n"
-	        "  -q, --level            Level to calculate bitrate {physical (default), link, network, transport and application}\n"
-	        "                         At level N , payload of particular layer is only considered, use filters to select particular streams.\n"
-	        "                         To calculate the bitrate at physical , use physical layer, Consider for Network layer use [-q network]\n"
-	        "                         It shall contain transport protocol header + payload\n"
-	        "                           - link: all bits captured at physical level, i.e link + network + transport + application\n"
-	        "                           - network: payload field at link layer , network + transport + application\n"
-	        "                           - transport: payload at network  layer, transport + application\n"
-	        "                           - application: The payload field at transport leve , ie.application\n"
-	        "                         Default is link\n"
-	        "      --no-fraction      No fractional PDU\n"
-	        "  -s, --pkts=N           Stop after N packets\n"
-	        "  -v, --verbose          Enable verbose output\n"
-	        "  -l, --link             Link capacity in Mbps [Default 100 Mbps]\n"
-	        "  -i, --iface=IFACE      MA interface\n"
-	        "  -g, --listen=IP        Listen IP [Default: 0.0.0.0]\n"
-	        "  -p, --port=PORT        Listen port [Default: 8073]\n"
-	        "  -h, --help             This help text\n\n");
-	filter_from_argv_usage();
+qd_real remaining_samplinginterval;
+qd_real ref_time;
+qd_real start_time; // has to initialise when the first packet is read
+qd_real end_time; //has to initialise till the next interval
+qd_real tSample;
+double bitrate; // make it qd_real 
+double bits; // make bits as qd
+long int packets_count;
+
+
+void handle_sigint(int signum){
+	if ( keep_running == 0 ){
+		fprintf(stderr, "\rGot SIGINT again, terminating.\n");
+		abort();
+	}
+	fprintf(stderr, "\rAborting capture.\n");
+	keep_running = 0;
+}
+double round (double value)
+{
+return (floor(value + 0.0005));
 }
 
-int main (int argc , char **argv) {
-	/* extract program name from path. e.g. /path/to/MArCd -> MArCd */
-	const char* separator = strrchr(argv[0], '/');
-	if ( separator ){
-		program_name = separator + 1;
-	} else {
-		program_name = argv[0];
-	}
-
-	int level = 0; // Bits Per Second calculation variables [BPScv]
-	double linkCapacity = 10e6; // initializing as 10 Mbps
-	double sampleFrequency = 1.0;
-	int triggerPoint = 0; //When do we do the sampling
-	FILE* verbose = NULL;
-	uint64_t sampleCounter = 0;
-	qd_real tSample = 1.0/sampleFrequency;
-	qd_real nextSample,lastEvent, pktArrivalTime; // when does the next sample occur, sample interval time
-	uint64_t dropCount = 0; // number of packets that have been dropped
-	qd_real timeOffset;
-	const char* listen_ip = "0.0.0.0";
-	int listen_port = 8073;
-	int ret = 0;
-	uint64_t max_packets = 0;
-	struct filter myFilter; // filter to filter arguments
-	const char* iface = NULL;
-
-	if ((filter_from_argv(&argc,argv, &myFilter)) != 0) {
-		fprintf (stderr, "could not create filter ");
-		exit(1);
-	}
-
-	if ( argc < 2 ) {
-		printf ("use %s -h or --help for help \n" , argv[0]);
-		exit (1);
-	}
-
-	int op, option_index = -1;
-	while ( (op=getopt_long(argc, argv, "hvl:i:m:n:q:p:g:p:", long_options, &option_index)) != -1 ){
-		switch (op) {
-		case '?': /* error */
-			return 1;
-
-		case 0: /* longopt with flag set */
-			break;
-
-		case 'm' : /* --samplefrequency */
-			sampleFrequency = atof (optarg);
-			tSample = 1/(double) sampleFrequency;
-			break;
-
-		case 'n': /* --triggerpoint */
-			triggerPoint = 1;
-			break;
-
-		case 'v': /* --verbose */
-			verbose = stderr;
-			break ;
-
-		case 'q': /* --level */
-			if (strcmp (optarg, "link") == 0)
-				level = 0;
-			else if ( strcmp (optarg, "network" ) == 0)
-				level = 1;
-			else if (strcmp (optarg ,"transport") == 0)
-				level = 2;
-			else if (strcmp (optarg , "application") == 0)
-				level = 3;
-			else {
-				fprintf(stderr, "unrecognised level arg %s \n", optarg);
-				exit(1);
-			}
-			break;
-
-		case 'l': /* --link */
-			linkCapacity = atof (optarg) * 1e6;
-			break;
-
-		case 'z': /* --no-fraction */
-			fractionalPDU = 0;
-			break;
-
-		case 's': /* --pkts */
-			max_packets = atoi (optarg);
-			break;
-
-		case 'i' : /* --iface */
-			iface = optarg;
-			break;
-
-		case 'g': /* --listen */
-			listen_ip = optarg;
-			break;
-
-		case 'p': /* --port */
-			listen_port = atoi(optarg);
-			break;
-
-		case 'h': /* --help */
-			show_usage(argv[0]);
-			exit (0);
-			break;
-
-		default:
-			if ( option_index >= 0 ){
-				fprintf(stderr, "flag --%s declared but not handled\n", long_options[option_index].name);
-			} else {
-				fprintf(stderr, "flag -%c declared but not handled\n", op);
-			}
-			abort();
-		}
-	}
-
-	/* Verbose output is discarded by default */
-	if ( !verbose ){
-		verbose = fopen("/dev/null", "r");
-	}
-
-	/* Initialize sample bins */
-	const size_t noBins = (ceil ((double)(1514*8)/(double) linkCapacity/to_double(tSample))) + 2 +sampleFrequency ;  // +1 to account for edge values, second +1 to account for n+1 samples.
-	qd_real* BINS = new qd_real [noBins];
-	qd_real* ST =  new qd_real [noBins];
-
-	/* Show settings */
-	fprintf(verbose, "Longest transfer time = %f\n", (double)1514*8 /(double) linkCapacity);
-	fprintf(verbose, "tT/tStamp = %f\n", to_double(1514*8 /(double) linkCapacity/tSample));
-	fprintf(verbose, "we need %zd bins\n", noBins);
-	fprintf(verbose, "Allocating memory buffer\n");
-	fprintf(verbose, "sampleFrequency = %fHz %f\n", sampleFrequency, to_double(tSample));
-	fprintf(verbose, "LinkCapacity = %fMbps\n", linkCapacity/1e6);
-
-	/* Open source stream */
-	stream_t inStream; // stream to read from
-	if ( stream_from_getopt(&inStream, argv, optind, argc, iface, NULL, program_name, 0) != 0 ){
-		return 1; /* error already shown */
-	}
-
-	/* Get stats handle */
-	const stream_stat_t* stats = stream_get_stat(inStream);
-
-	/* Display stream information (version, mampid, etc) */
-	stream_print_info(inStream, verbose);
-
-	/* Initialize conserver */
-	conserver_t srv;
-	dataset_t ds;
-	if ( (ret=conserver_init(&srv, listen_ip, listen_port)) != 0 ){
-		fprintf(stderr, "Failed to initialize conserver (%d): %s\n", ret, conserver_get_error());
-		return 1;
-	}
-	if ( (ret=conserver_add(srv, &ds, "bitrate")) != 0 ){
-		fprintf(stderr, "Failed to create dataset (%d): %s\n", ret, conserver_get_error());
-		return 1;
-	}
-
-	// begin packet processing
-
-	///////////////////// HERE ONWARS LOOK INTOOOOO
-	//Begin Packet processing
-	fprintf(verbose, "Going to read first\n");
-
-	struct cap_header *caphead;
-	if ( (ret=stream_read (inStream, &caphead, &myFilter, NULL)) != 0 ){
-		fprintf(stderr, "stream_read() returned %d: %s\n", ret, caputils_error_string(ret));
-		return 1;
-	}
-
-	fprintf(verbose, "Read initial packet\n");
-
-	pktArrivalTime=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)caphead->ts.tv_psec/PICODIVIDER;
-	timeOffset=floor(pktArrivalTime);
-	pktArrivalTime-=timeOffset;
-
-	if(triggerPoint==1) {
-		nextSample=pktArrivalTime+tSample/2.0; // Set the first sample to occur 0.5Ts from the arrival of this packet.
-	} else {
-		nextSample=floor(pktArrivalTime+tSample/2.0);
-	}
-
-	fprintf(verbose,"First packet arrives at %f.\n",to_double(pktArrivalTime+timeOffset));
-	fprintf(verbose,"                        %d.%"PRIu64"\n",caphead->ts.tv_sec,caphead->ts.tv_psec);
-
-
-	for( unsigned int i = 0; i < noBins; i++ ){
-		ST[i]=nextSample;
-		BINS[i]=0.0;
-		nextSample-=tSample; // Since these will have taken place.
-	}
-
-	if ( (ret=stream_read (inStream, &caphead, &myFilter, NULL)) != 0 ){
-		fprintf(stderr, "stream_read() returned %d: %s\n", ret, caputils_error_string(ret));
-		return 1;
-	}
-
-	fprintf(verbose, "Read secondary packet\n");
-	static int readPktCounter=1;
-	while ( keep_running ){
-		int payLoadSize = 0;
-		if(pktArrivalTime<ST[0]) { /* Packet arrived first */
-			//  cout << "pkt["<< pktCount << "]";
-			if(pktArrivalTime<ST[1]) { /* Packet should have arrived earlier, dropping (pktArrival CAN handle this partially */
-				//	  cout << caphead->nic << ":" << caphead->ts.tv_sec << "." << caphead->ts.tv_psec << "\t";
-				//	  cout << "Dropping packet!!!" << endl;
-				dropCount++;
-				printf("\n[%d] dropping pkt:%f st[0]: %f st[1]: %f, timeOffSet = %f\n", readPktCounter,to_double(pktArrivalTime), to_double(ST[0]), to_double(ST[1]),to_double(timeOffset));
-				printf("(dropping)Ppkt arrived:%d.%"PRIu64"\n", caphead->ts.tv_sec,caphead->ts.tv_psec);
-			} else {                   /* Normal packet treatment */
-				/* Begin by extracting the interesting information. */
-				//    printf("%s:%f.%f:LINK(%4d): \t",caphead->nic,caphead->ts.tv_sec,caphead->ts.tv_psec, caphead->len);
-				//     cout << caphead->nic << ":" << caphead->ts.tv_sec << "." << caphead->ts.tv_psec << ":LINK(" << caphead->len << ") \t";
-				payLoadSize = payLoadExtraction(level, caphead);
-				pktArrival(pktArrivalTime,payLoadSize,linkCapacity, BINS,ST, noBins,to_double(tSample));
-				lastEvent=pktArrivalTime;
-			}  // End Normal packet treatment.
-
-			if ( max_packets > 0 && ( stats->matched + 1 ) > max_packets) {
-				/* Read enough pkts lets break. */
-				break;
-			}
-
-			/* MA packets arrive at least once per second if there is data (and no packets if there wasn't any) */
-			struct timeval tv = {1,0};
-			ret = stream_read (inStream, &caphead, &myFilter, NULL);
-			if ( ret == -1 ){
-				keep_running = 0; /* finished */
-				continue;
-			} else if ( ret == EAGAIN ){ /* timeout */
-			  printf("WTF ! ! ? ? ! ? ! ? ! ? ! ? ! ? ! ? ! ? ! ? !\n");
-				goto do_sample; /* f#ing spagetti, sorry */
-			} else if ( ret != 0 ){ /* error */
-				fprintf(stderr, "stream_read() returned %d: %s\n", ret, caputils_error_string(ret));
-				return 1;
-			}
-			readPktCounter++;
-			//usleep(300);
-
-			pktArrivalTime=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)caphead->ts.tv_psec/PICODIVIDER;
-			pktArrivalTime-=timeOffset;
-#ifdef debug
-			printf("\n%d pktArrival:%f st[0]: %f st[1]: %f (nic = %s)\n",readPktCounter, to_double(pktArrivalTime), to_double(ST[0]), to_double(ST[1]), caphead->nic);
-#endif
-		} else { /* Sample should occur */
-#ifdef debug
-		  printf("SAMPLE ME? %f < %f \n", to_double(pktArrivalTime),to_double(ST[0]));
-#endif
-		  do_sample:
-			lastEvent=ST[noBins-1];
-			const double sampleValue=sampleBINS(BINS,ST,noBins,to_double(tSample),linkCapacity);
-			//cout << "[" << sampleCounter <<"]  " << setiosflags(ios::fixed) << setprecision(12) << to_double(lastEvent+timeOffset)<< ": " << sampleValue << " bps " << endl;
-			//cout << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset)<< ":" << sampleValue << endl;
-
-			char msg[64];
-			const int bytes = snprintf(msg, 64, "%.6f;%.6f", to_double(lastEvent+timeOffset), sampleValue);
-
-			fprintf(stderr, "%s\n", msg);
-			fflush(stderr);
-			conserver_push(&ds, msg, bytes);
-			sampleCounter++;
-		}
-	}//End Packet processing
-#ifdef debug
-	cout << "Terminated loop. Cleaning up." << endl;
-#endif
-	for( unsigned int i = 0; i < noBins + 2; i++ ){
-		lastEvent=ST[noBins-1];
-		const double sampleValue = sampleBINS(BINS,ST,noBins,to_double(tSample),linkCapacity);
-		//      cout << "[" << sampleCounter <<"]" << setiosflags(ios::fixed) << setprecision(12) << (double)(lastEvent+timeOffset) << ": " << sampleValue << endl;
-
-		cout << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset) << ":" << sampleValue << endl;
-		sampleCounter++;
-	}
-
-	delete(ST);
-	delete(BINS);
-
-	fprintf(verbose, "There was a total of %"PRIu64" pkts read.\n", stats->read);
-	fprintf(verbose, "There was a total of %"PRIu64" pkts matched .\n", stats->matched);
-
-	stream_close(inStream);
-	filter_close(&myFilter);
-
-	return 0;
+double roundtwo (double value)
+{
+return (floor (value + 0.0005));
 }
-
-
-/* ------------------------SUB-routines-------------------------------*/
-/* ****************************************************************** */
-/*
-  Created:      2002-12-16 ??:??, Patrik.Carlsson@bth.se
-  Latest edit:  2003-02-20 10:30, Patrik.Carlsson@bth.se
-
-  Function:
-  void pktArrival(*)
-  Return value:
-  None
-
-  Arguments (In Order):
-  Arrival time of Packet.
-  Size of Packet/Payload, this is used to calculate when the packet/payload started.
-  Currently this only works when the payload is at the end!
-  I.e If p indicated payload, H packet headers/or other uninteresting info.
-  HHHHpppppp OK
-  Hppppppppp OK
-  HHHpppHHHH NOT OK
-  ppppppHHHH NOT OK
-  Link Capacity in bps.
-  Array that contains the number of bits that arrived in a sample interval, defined in ST.
-  Array that contains the sample times, ST[0] is the NEXT sample, ST[1] the most recent.
-  ST[N] is the sample that is to be "releases"
-  Number of samples/bins, i.e. N in the definition above.
-  Inter sample time, or 1/fS.
-
-  Description:
-  In order to correctly estimate where a packets bits arrive, this to sample correctly, we calculate when the first packet/payload
-  bit arrived. Once we have the packets 'real' arrival time(tStart), and termination time (tArr). We can overlay this time span
-  on the sample time line, the bits of the packet are then 'dropped' down into the corresponding bin. Since we allow arbitrary
-  sample frequency (double sets the limit), we can zoom down to sample intervals smaller than the transfer time of a bit. However
-  at this level of detail, the time stamp of the packet is _crucial_. Depending on its inaccuracy there might be more than one bit
-  in an interval. This routine DOES NOT account for this, it MAY report if there is more bits than possible in a interval.
-
-
-
-
-*/
-static void pktArrival(qd_real tArr, int pktSize, double linkCapacity,qd_real *BITS,qd_real *STy,int bins, double tSample){
-	qd_real tTransfer, tStart;              // Transfer time of packet, start time of packet
-	int j;                                  // Yee, can it be a index variable..
-	qd_real bits;                           // Temporary variable, holds number of bits in a, or parts of, sample interval
-
-#ifdef debug
-	printf("pktArrival() %d bytes ",pktSize);
-#endif
-	tTransfer=(pktSize*8.0)/linkCapacity;   // Estimate the transfer wire transfer time
-	tStart=tArr-tTransfer;                  // Estimate when the packet started arriving
-
-#ifdef debug
-	cout << "  [tStart " << setiosflags(ios::fixed) << setprecision(12) << to_double(tStart) << " -- tTrfs " << to_double(tTransfer) << "  ---- " << (tArr) << " tT/tS " << to_double(tTransfer)/(tSample) << endl;
-
-#endif
-	if(fractionalPDU==0){        // Do not consider fractional pdus, just wack them in the array.
-		BITS[0]+=pktSize*8;
-	} else {       // Normal treatemant
-
-		if(tArr<STy[0] && tArr>STy[1]) {        // Pkt arrives in the "next" sample.. NORMAL behaviour.
-#ifdef debug
-			printf("<<PKT arrived Correctly>>");
-#endif
-			if(tStart>STy[1]) {                  // Packet arrives completely next sample interval, completely since we also know tArr<STy[0]
-#ifdef debug
-				printf("bin 0 %d bits (ONE).\n",pktSize*8);
-#endif
-				BITS[0]+=pktSize*8;
-			} else {
-				if(tStart>STy[2] ){               // Packet started arriving in previous sample interval, so its split inbetween the 'previous' and 'next' intervals.
-#ifdef debug
-					cout << "bin 0 +" << (tArr-STy[1])*linkCapacity << " bin 1 += " << (STy[1]-tStart)*linkCapacity << " (TWO)" << endl;
-#endif
-					BITS[0]+=(tArr-STy[1])*linkCapacity;    // Calculate how many bits that will arrive in the next interval.
-					BITS[1]+=(STy[1]-tStart)*linkCapacity;  // and how many bits that arrived in the previous.
-				} else {                                  // Packet spans more than 3 intervals
-					if(ceil(to_double(tTransfer/tSample))>=bins) {  // Calculate how many bins that the packet needs to be completely measured.
-						cout << "  [tStart " << tStart << " -- tTrfs " << tTransfer << "  ---- " << tArr << " tT/tS " << tTransfer/tSample << endl;
-						printf("Error: pkt to large...\n");      // It needs more than we got, ERROR!! Increase the noBins in the init..
-						return;                                  // Each extra bin, allows us to handle packets that are
-					}                                            // offset by tSample seconds. Thus 10 extra bins, allows pkts to be offset 10tSample
-
-					bits=pktSize*8.0-(tArr-STy[1])*linkCapacity; // How many bits will remain of the packet after the once that go to
-					// next interval has been removed?
-					BITS[0]+=(tArr-STy[1])*linkCapacity;         // How many bits will end up in the next interval ?
-					j=1;
-#ifdef debug
-					cout << "bin 0 +" << (tArr-STy[1])*linkCapacity << "( "<< tArr << " - " << STy[1]<< " = " << tArr-STy[1] << ") BIN[" << BITS[0]<< "]"<<endl;
-#endif
-					while(bits>tSample*linkCapacity){            // While bits>tSample*linkCapacity=MaxIntervalBits of the packet keep filling the intervals.
-#ifdef debug                                           // We use MIB to not endup with negative bits in the last interval.
-						cout << "bin " << j << "  BIN["<< BITS[j] << "] " << endl;
-#endif
-						BITS[j]+=tSample*linkCapacity;            // add B bits in interval j
-						bits-=tSample*linkCapacity;               // calculate how many bits that remain
-#ifdef debug
-						cout << " += " << tSample*linkCapacity << " (" << STy[j+1] << " -- "<< STy[j] << " ) BIN[" << BITS[j] << "]" << endl;
-#endif
-						j++;
-					}
-#ifdef debug
-					cout << "Lbin " << j << " BIN[ " << BITS[j] << "] "<< endl;//The remaining bits goes here. The range of bits should be 0<= bits <MIB
-#endif
-					if(bits>0.0) {
-						BITS[j]+=bits;
-					}
-					if(bits<0.0) {                                // Just a precausion, and probably an ERROR!
-						BITS[j-1]-=(-1.0)*bits;
-						cout << "  [tStart " << tStart << " -- tTrfs " << tTransfer << "  ---- " << tArr << " tT/tS " << tTransfer/tSample << endl;
-						printf("ERROR: negative bits in the last bin. Multiple bins coverd!!");
-						return;
-					}
-#ifdef debug
-					cout << " += " << bits << " ("<< STy[j+1] << " -- "<< STy[j] << " ) BIN[ " << BITS[j] << "]" << endl;
-
-#endif
-				}
-			}
-		}
-		if(STy[2]<tArr && tArr<STy[1]) {                    // Packet should have arrived in the previous sample..
-			printf("**PKT MISSED IT sample**\n");            // This is the almost the same routines as above, only adjusted to account for the
-			// shifted arrival time of the packet.
-			if(ceil(to_double(tTransfer/tSample))>=bins-1) {
-				printf("Error: Pkt missed by one interval and pkt to large...\n");
-				return;
-			}
-
-			if(tStart>STy[2]) {                             // Packet arived completely in the previous interval
-#ifdef debug
-				printf("Full pkt of %d bits in bin 1.\n",pktSize*8);
-#endif
-				BITS[1]+=pktSize*8;
-			} else {
-				if(tStart>STy[3] ){                               // Pkt split from previous sample and this
-					BITS[1]+=(tArr-STy[2])*linkCapacity;
-					BITS[2]+=(STy[2]-tStart)*linkCapacity;
-				} else {                                          // Pkt spans more than 3 intervals
-					BITS[1]+=(tArr-STy[2])*linkCapacity;
-					j=2;
-					bits=pktSize*8.0-(tArr-STy[2])*linkCapacity;    // How many bits will remain of the packet after the once that go to
-					while(bits>tSample*linkCapacity && j<bins-1){
-						BITS[j]+=tSample*linkCapacity;
-						bits-=tSample*linkCapacity;                   // calculate how many bits that remain
-						j++;
-					}
-					if(bits>0.0) {
-						BITS[j]+=bits;
-					}
-					if(bits<0.0) {                                  // Just a precausion, and probably an ERROR!
-						BITS[j-1]-=(-1.0)*bits;
-						cout << "  [tStart " << tStart << " -- tTrfs " << tTransfer << "  ---- " << tArr << " tT/tS " << tTransfer/tSample << endl;
-						printf("ERROR: negative bits in the last bin. Multiple bins coverd(Shifted pkt)!!");
-						return;
-					}
-				}
-			}
-		}
-		if(tArr<STy[2]) {                               // Packet is off by two samples.. BIG ERRROR!!
-#ifdef debug
-			cout << "ERROR: packet (" << tArr <<") arrived " << (STy[1]-tArr)/tSample << " samples to late.\n" << endl;
-#endif
-		}
-	}
-#ifdef debug
-	printf("<-pktArrival()  ");
-#endif
-  return;
-}
-
-/*
-  Created:      2002-12-16 ??:??, Patrik.Carlsson@bth.se
-  Latest edit:  2003-02-20 10:30, Patrik.Carlsson@bth.se
-
-  Function:
-  void sample(*)
-  Return value:
-  bitrate estimate at sample ST[N]
-
-  Arguments (In Order):
-  Array that contains the number of bits that arrived in a sample interval, defined in ST.
-  Array that contains the sample times, ST[0] is the NEXT sample, ST[1] the most recent.
-  ST[N] is the sample that is to be "releases"
-  Number of samples/bins, i.e. N in the definition above.
-  Inter sample time, or 1/fS.
-  Link Capacity in bps.
-
-  Description:
-  Based on the sample intervals filled in by pktArrival() this routine takes the interval that happend 'earliest' ST[N], and
-  calculates the bitrate obtained in this interval. The result, bitEst, is the returned value. Then it shifts both arrays
-  this to create a new sample interval at ST[0].
-
-
-
-*/
-
-
-static double sampleBINS(qd_real *BITS, qd_real *STy, int bins,double tSample, double linkCapacity) {
-  double bitEst;
-  int i;
-  qd_real tSample2=tSample;
-  bitEst=to_double(BITS[bins-1]/tSample2);    // Calculate for the bit rate estimate for the last bin, which cannot get any more samples.
-
-#ifdef debug_sample
-  printf("sample()\t at %f \n",to_double(STy[0]));
-#endif
-  if(bitEst/1e6>linkCapacity ||  bitEst<0.0) {
-    printf("########bit estimation of %f Mbps\n", bitEst/1e6);
-  }
-#ifdef debug_bps_estm
-  printf("S[%12.12f]bps = %f / %f = %f\n",STy[bins-1],BITS[bins-1],tSample,bitEst);
-#endif
-  for(i=bins-1;i>0;i--){        // Shift the bins; bin[i]=bin[i-1]
-    STy[i]=STy[i-1];
-    BITS[i]=BITS[i-1];
-  }
-  BITS[0]=0.0;                    // Initialize the first bin to zero, and the arrival time of the next sample.
-  STy[0]=STy[1]+tSample;
-
-#ifdef debug_sample
-  printf("--bins--\n");
-  for(i=0;i<bins;i++){
-    cout << "[" << i << "]" << setiosflags(ios::fixed) << setprecision(12) << to_double(STy[i]) << "=  " << to_double(BITS[i]) << endl;
-  }
-
-  cout << " next at " << setiosflags(ios::fixed) << setprecision(12) << to_double(STy[0]) << "<-sample()" << endl;
-#endif
-
-
-  return bitEst;
-
-}
-
 /*
   Created:      2003-02-20 12:40, Patrik.Carlsson@bth.se
   Latest edit:  2003-02-20 10:30, Patrik.Carlsson@bth.se
@@ -623,6 +97,47 @@ static double sampleBINS(qd_real *BITS, qd_real *STy, int bins,double tSample, d
 
 */
 //caphead is new one, data is old.
+
+void printbitrate() {
+//calculate bitrate
+bitrate = roundtwo(bits /to_double(tSample));
+//print bitrate greater than zero
+if (bits > 0){
+cout << setiosflags(ios::fixed) << setprecision(15) << to_double(start_time)<<"\t"<<bitrate <<"\n";
+}
+// reset start_time ; end_time; remaining_sampling interval
+start_time = end_time;
+end_time = start_time + tSample;
+remaining_samplinginterval = tSample;
+bits = 0;
+
+}
+static void show_usage(void){
+//	printf("%s-" VERSION "\n", program_name);
+	printf("(C) 2004 Patrik Arlos <patrik.arlos@bth.se>\n");
+	printf("(C) 2012 David Sveningsson <david.sveningsson@bth.se>\n");
+	printf("(C) 2012 Vamsi krishna Konakalla <vkk@bth.se>\n");
+	printf("Usage: %s [OPTIONS] STREAM\n", program_name);
+	printf("  -c, --content        Write full package content as hexdump. [default=no]\n"
+	       "  -i, --iface          For ethernet-based streams, this is the interface to listen\n"
+	       "                       on. For other streams it is ignored.\n"
+	       "  -m, --samplingFrequency Sampling frequency in Hertz \n"
+		"  -q, --level 		        Level to calculate bitrate {physical (default), link, network, transport and application}\n"
+	        "                         At level N , payload of particular layer is only considered, use filters to select particular streams.\n"
+	        "                         To calculate the bitrate at physical , use physical layer, Consider for Network layer use [-q network]\n"
+	        "                         It shall contain transport protocol header + payload\n"
+	        "                           - link: all bits captured at physical level, i.e link + network + transport + application\n"
+	        "                           - network: payload field at link layer , network + transport + application\n"
+	        "                           - transport: payload at network  layer, transport + application\n"
+	        "                           - application: The payload field at transport leve , ie.application\n"
+	        "                         Default is link\n"
+	       "  -l, --linkCapacity   link Capacity in bits per second default 100 Mbps, (eg.input 100e6) \n"
+	       "  -p, --packets=N      Stop after N packets.\n"
+	       "  -t, --timeout=N      Wait for N ms while buffer fills [default: 1000ms].\n"
+	       "  -d, --calender       Show timestamps in human-readable format.\n"
+	       "  -h, --help           This text.\n\n");
+	filter_from_argv_usage();
+}
 
 static int payLoadExtraction(int level, const cap_head* caphead) {
 	// payload size at physical (ether+network+transport+app)
@@ -695,3 +210,229 @@ static int payLoadExtraction(int level, const cap_head* caphead) {
 	fprintf(stderr, "packet wasn't handled by payLoadExtraction, ignored\n");
 	return 0;
 }
+
+int main(int argc, char **argv){
+  /* extract program name from path. e.g. /path/to/MArCd -> MArCd */
+  double sampleFrequency = 1.0; //default 1hz
+  tSample = 1.0/sampleFrequency;
+  double linkCapacity = 100e6;
+  int payLoadSize;
+  int level = 0;
+  bits = 0;
+  bitrate = 0;
+  const char* separator = strrchr(argv[0], '/');
+  if ( separator ){
+    program_name = separator + 1;
+  } else {
+    program_name = argv[0];
+  }
+
+	struct filter filter;
+	if ( filter_from_argv(&argc, argv, &filter) != 0 ){
+		return 0; /* error already shown */
+	}
+
+	filter_print(&filter, stderr, 0);
+   
+	int op, option_index = -1;
+	static struct option long_options[]= {
+	{"content",  no_argument,       0, 'c'},
+	{"packets",  required_argument, 0, 'p'},
+	{"iface",    required_argument, 0, 'i'},
+	{"timeout",  required_argument, 0, 't'},
+	{"level",  required_argument, 0, 'q'},
+	{"sampleFrequency",  required_argument, 0, 'm'},
+	{"linkCapacity",  required_argument, 0, 'l'},
+	{"calender", no_argument,       0, 'd'},
+	{"help",     no_argument,       0, 'h'},
+	{0, 0, 0, 0} /* sentinel */
+};
+	while ( (op = getopt_long(argc, argv, "hcdi:p:t:m:q:l:", long_options, &option_index)) != -1 ){
+		switch (op){
+		case 0:   /* long opt */
+		case '?': /* unknown opt */
+			break;
+
+		case 'd':
+			print_date = 1;
+			break;
+
+		case 'p':
+			max_packets = atoi(optarg);
+			break;
+		case 'm' : /* --samplefrequency */
+			sampleFrequency = atof (optarg);
+			tSample = 1/(double) sampleFrequency;
+			break;
+	
+
+		case 't':
+			{
+				int tmp = atoi(optarg);
+				timeout.tv_sec  = tmp / 1000;
+				timeout.tv_usec = tmp % 1000 * 1000;
+			}
+			break;
+		case 'q': /* --level */
+			if (strcmp (optarg, "link") == 0)
+				level = 0;
+			else if ( strcmp (optarg, "network" ) == 0)
+				level = 1;
+			else if (strcmp (optarg ,"transport") == 0)
+				level = 2;
+			else if (strcmp (optarg , "application") == 0)
+				level = 3;
+			else {
+				fprintf(stderr, "unrecognised level arg %s \n", optarg);
+				exit(1);
+			}
+			break;
+
+		case 'l': /* --link */
+			linkCapacity = atof (optarg);
+			cout << " Link Capacity input = " << linkCapacity << " bps\n";
+			break;
+
+		case 'c':
+			print_content = 1;
+			break;
+
+		case 'i':
+			iface = optarg;
+			break;
+
+		case 'h':
+			show_usage();
+			return 0;
+
+		default:
+			printf ("?? getopt returned character code 0%o ??\n", op);
+		}
+	}
+
+	int ret;
+	// initialise packet count
+     packets_count = 0;
+	/* Open stream(s) */
+	struct stream* stream;
+	if ( (ret=stream_from_getopt(&stream, argv, optind, argc, iface, "-", program_name, 0)) != 0 ) {
+		return ret; /* Error already shown */
+	}
+	const stream_stat_t* stat = stream_get_stat(stream);
+	stream_print_info(stream, stderr);
+
+	/* handle C-c */
+	signal(SIGINT, handle_sigint);
+
+	while ( keep_running ) {
+#ifdef debug 
+         cout << "New Packet \n";
+#endif
+		/* A short timeout is used to allow the application to "breathe", i.e
+		 * terminate if SIGINT was received. */
+		struct timeval tv = timeout;
+
+		/* Read the next packet */
+		cap_head* cp;
+		ret = stream_read(stream, &cp, &filter, &tv);
+		if ( ret == EAGAIN ){
+			continue; /* timeout */
+		} else if ( ret != 0 ){
+			break; /* shutdown or error */
+		} 
+                qd_real pkt1;
+				payLoadSize = payLoadExtraction(level, cp); //payload size
+#ifdef debug
+				cout<< "Payload is " << payLoadSize <<"\n";
+#endif
+                pkt1=(qd_real)(double)cp->ts.tv_sec+(qd_real)(double)(cp->ts.tv_psec/PICODIVIDER); // extract timestamp.
+				packets_count ++;
+				if (packets_count == 1) {
+				ref_time = pkt1;
+				start_time = ref_time;
+				end_time = ref_time + tSample;
+				remaining_samplinginterval = end_time - start_time;
+				}
+                // while current timestamp - tend > sampling interval print bitrate. 
+#ifdef debug
+		cout << setiosflags(ios::fixed) << setprecision(14) << "PKT timestamp is : " << to_double(pkt1)<<"\t"<<" End of the sample time end_time :"
+		<<to_double(end_time) <<"Difference : " <<to_double((pkt1 - end_time))  <<"\n"; 
+#endif		
+		  while ( (to_double(pkt1) - to_double(end_time)) >= 0.0)
+		{
+		printbitrate();
+		}  
+		// estimate transfer time of the packet
+		qd_real remaining_transfertime, transfertime_packet;
+		transfertime_packet = (payLoadSize*8)/linkCapacity;
+		remaining_transfertime = transfertime_packet;
+		remaining_samplinginterval = end_time - pkt1; //added now
+#ifdef debug 
+		cout << setiosflags(ios::fixed) << setprecision(12) << "Estimated transfer time of this packet is : " << to_double(transfertime_packet)<<"\n"<<" Estimating sampling interval left is :"
+		<<to_double(remaining_samplinginterval) <<"\n"; 
+		//in case packet is small the packet will not enter this loop, now handle the big packet
+#endif   		// 		
+		while (remaining_transfertime >= remaining_samplinginterval)
+		{
+#ifdef debug
+		cout <<"Hello World \n";
+#endif
+		bits += round(((to_double(remaining_samplinginterval))/(to_double(transfertime_packet)))*payLoadSize*8); //28 march
+		remaining_transfertime-=remaining_samplinginterval;
+#ifdef debug 		
+		cout << setiosflags(ios::fixed) << setprecision(12) << to_double(remaining_transfertime)<<":RTT:RSI:"<< to_double(remaining_samplinginterval) <<":BITS"<<bits <<"\n";
+#endif 
+		printbitrate(); // print bitrate -- dont forget to reset the remaining sampling interval in print_bitrate; set it to tSample; reset Bits;
+		
+		}
+		// handle small packets or the remaining fractional packets which are in next interval
+		bits+= round(((to_double(remaining_transfertime))/(to_double(transfertime_packet)))*payLoadSize*8);
+		remaining_samplinginterval = end_time - pkt1 - transfertime_packet;
+#ifdef debug 
+		cout << setiosflags(ios::fixed) << setprecision(12) << to_double(remaining_transfertime)<<":RTT:RSII:"<< to_double(remaining_samplinginterval) <<":BITS"<<bits <<"\n";
+		cout << setiosflags(ios::fixed) << setprecision(12) << "Estimated sample interval after transfer is : " << to_double(remaining_samplinginterval)<<"\n";
+#endif 
+		// handle remaining sampling interval for small packets;
+		
+		//fprintf(stdout, "[%4"PRIu64"]:%.4s:%.8s:", stat->matched, cp->nic, cp->mampid);
+		if( print_date == 0 ) {
+			//fprintf(stdout, "%u.", cp->ts.tv_sec);
+		} else {
+			//static char timeStr[25];
+			//struct tm tm = *gmtime(&time);
+			//strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &tm);
+		//	fprintf(stdout, "%s.", timeStr);
+		}
+
+		//fprintf(stdout, "%012"PRId64":LINK(%4d):CAPLEN(%4d):", cp->ts.tv_psec, cp->len, cp->caplen);
+                //int packetlength = cp->len;
+		
+
+		if ( max_packets > 0 && stat->matched >= max_packets) {
+			/* Read enough pkts lets break. */
+			printf("read enought packages\n");
+			break;
+		}
+	}
+
+	/* if ret == -1 the stream was closed properly (e.g EOF or TCP shutdown)
+	 * In addition EINTR should not give any errors because it is implied when the
+	 * user presses C-c */
+	if ( ret > 0 && ret != EINTR ){
+		fprintf(stderr, "stream_read() returned 0x%08X: %s\n", ret, caputils_error_string(ret));
+	}
+
+	/* Write stats */
+	//fprintf(stderr, "%"PRIu64" packets received.\n", stat->read);
+	//fprintf(stderr, "%"PRIu64" packets matched filter.\n", stat->matched);
+
+	/* Release resources */
+	stream_close(stream);
+	filter_close(&filter);
+
+	return 0;
+}
+
+
+
+
