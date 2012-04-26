@@ -55,7 +55,6 @@ static qd_real ref_time;
 static qd_real start_time; // has to initialise when the first packet is read
 static qd_real end_time; //has to initialise till the next interval
 static qd_real tSample;
-static double bitrate; // make it qd_real
 static double bits; // make bits as qd
 
 static void handle_sigint(int signum){
@@ -95,14 +94,16 @@ static double roundtwo (double value)
 */
 //caphead is new one, data is old.
 
+
+
 static void printbitrate() {
-//calculate bitrate
-	bitrate = roundtwo(bits /to_double(tSample));
-//print bitrate greater than zero
+	//calculate bitrate
+	const double bitrate = roundtwo(bits /to_double(tSample));
+	//print bitrate greater than zero
 	if (bits > 0){
 		cout << setiosflags(ios::fixed) << setprecision(15) << to_double(start_time)<<"\t"<<bitrate <<"\n";
 	}
-// reset start_time ; end_time; remaining_sampling interval
+	// reset start_time ; end_time; remaining_sampling interval
 	start_time = end_time;
 	end_time = start_time + tSample;
 	remaining_samplinginterval = tSample;
@@ -216,7 +217,6 @@ int main(int argc, char **argv){
 	int payLoadSize;
 	int level = 0;
 	bits = 0;
-	bitrate = 0;
 	const char* separator = strrchr(argv[0], '/');
 	if ( separator ){
 		program_name = separator + 1;
