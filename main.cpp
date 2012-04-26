@@ -37,7 +37,6 @@
 #include <math.h>
 #include <iomanip>
 //#define debug
-#define PICODIVIDER (double)1.0e12
 #define STPBRIDGES 0x0026
 #define CDPVTP 0x016E
 
@@ -345,7 +344,7 @@ int main(int argc, char **argv){
 #ifdef debug
 				cout<< "Payload is " << payLoadSize <<"\n";
 #endif
-                pkt1=(qd_real)(double)cp->ts.tv_sec+(qd_real)(double)(cp->ts.tv_psec/PICODIVIDER); // extract timestamp.
+				pkt1=(qd_real)(double)cp->ts.tv_sec+(qd_real)(double)(cp->ts.tv_psec/(double)PICODIVIDER); // extract timestamp.
 				packets_count ++;
 				if (packets_count == 1) {
 				ref_time = pkt1;
