@@ -50,17 +50,17 @@ static const char* iface = NULL;
 static struct timeval timeout = {1,0};
 static const char* program_name = NULL;
 
-qd_real remaining_samplinginterval;
-qd_real ref_time;
-qd_real start_time; // has to initialise when the first packet is read
-qd_real end_time; //has to initialise till the next interval
-qd_real tSample;
-double bitrate; // make it qd_real
-double bits; // make bits as qd
-long int packets_count;
+static qd_real remaining_samplinginterval;
+static qd_real ref_time;
+static qd_real start_time; // has to initialise when the first packet is read
+static qd_real end_time; //has to initialise till the next interval
+static qd_real tSample;
+static double bitrate; // make it qd_real
+static double bits; // make bits as qd
+static long int packets_count;
 
 
-void handle_sigint(int signum){
+static void handle_sigint(int signum){
 	if ( keep_running == 0 ){
 		fprintf(stderr, "\rGot SIGINT again, terminating.\n");
 		abort();
@@ -68,15 +68,16 @@ void handle_sigint(int signum){
 	fprintf(stderr, "\rAborting capture.\n");
 	keep_running = 0;
 }
-double round (double value)
+static double my_round (double value)
 {
 	return (floor(value + 0.0005));
 }
 
-double roundtwo (double value)
+static double roundtwo (double value)
 {
 	return (floor (value + 0.0005));
 }
+
 /*
   Created:      2003-02-20 12:40, Patrik.Carlsson@bth.se
   Latest edit:  2003-02-20 10:30, Patrik.Carlsson@bth.se
@@ -96,7 +97,7 @@ double roundtwo (double value)
 */
 //caphead is new one, data is old.
 
-void printbitrate() {
+static void printbitrate() {
 //calculate bitrate
 	bitrate = roundtwo(bits /to_double(tSample));
 //print bitrate greater than zero
@@ -375,7 +376,7 @@ int main(int argc, char **argv){
 #ifdef debug
 				cout <<"Hello World \n";
 #endif
-				bits += round(((to_double(remaining_samplinginterval))/(to_double(transfertime_packet)))*payLoadSize*8); //28 march
+				bits += my_round(((to_double(remaining_samplinginterval))/(to_double(transfertime_packet)))*payLoadSize*8); //28 march
 				remaining_transfertime-=remaining_samplinginterval;
 #ifdef debug
 				cout << setiosflags(ios::fixed) << setprecision(12) << to_double(remaining_transfertime)<<":RTT:RSI:"<< to_double(remaining_samplinginterval) <<":BITS"<<bits <<"\n";
@@ -384,7 +385,7 @@ int main(int argc, char **argv){
 
 			}
 		// handle small packets or the remaining fractional packets which are in next interval
-		bits+= round(((to_double(remaining_transfertime))/(to_double(transfertime_packet)))*payLoadSize*8);
+		bits+= my_round(((to_double(remaining_transfertime))/(to_double(transfertime_packet)))*payLoadSize*8);
 		remaining_samplinginterval = end_time - pkt1 - transfertime_packet;
 #ifdef debug
 		cout << setiosflags(ios::fixed) << setprecision(12) << to_double(remaining_transfertime)<<":RTT:RSII:"<< to_double(remaining_samplinginterval) <<":BITS"<<bits <<"\n";
