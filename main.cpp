@@ -45,7 +45,7 @@ using namespace std;
 static int keep_running = 1;
 static int print_content = 0;
 static int print_date = 0;
-static int max_packets = 0;
+static unsigned int max_packets = 0;
 static const char* iface = NULL;
 static struct timeval timeout = {1,0};
 static const char* program_name = NULL;
@@ -57,8 +57,6 @@ static qd_real end_time; //has to initialise till the next interval
 static qd_real tSample;
 static double bitrate; // make it qd_real
 static double bits; // make bits as qd
-static long int packets_count;
-
 
 static void handle_sigint(int signum){
 	if ( keep_running == 0 ){
@@ -311,7 +309,6 @@ int main(int argc, char **argv){
 
 	int ret;
 	// initialise packet count
-	packets_count = 0;
 	/* Open stream(s) */
 	struct stream* stream;
 	if ( (ret=stream_from_getopt(&stream, argv, optind, argc, iface, "-", program_name, 0)) != 0 ) {
@@ -345,13 +342,16 @@ int main(int argc, char **argv){
 		cout<< "Payload is " << payLoadSize <<"\n";
 #endif
 		pkt1=(qd_real)(double)cp->ts.tv_sec+(qd_real)(double)(cp->ts.tv_psec/(double)PICODIVIDER); // extract timestamp.
-		packets_count ++;
-		if (packets_count == 1) {
+
+		static int first_packet = 1;
+		if ( first_packet ) {
 			ref_time = pkt1;
 			start_time = ref_time;
 			end_time = ref_time + tSample;
 			remaining_samplinginterval = end_time - start_time;
+			first_packet = 0;
 		}
+
 		// while current timestamp - tend > sampling interval print bitrate.
 #ifdef debug
 		cout << setiosflags(ios::fixed) << setprecision(14) << "PKT timestamp is : " << to_double(pkt1)<<"\t"<<" End of the sample time end_time :"
