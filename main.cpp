@@ -75,6 +75,7 @@ static void default_formatter(double t, double bitrate){
 
 static void csv_formatter(double t, double bitrate){
 	fprintf(stdout, "%f;%f\n", t, bitrate);
+	fflush(stdout);
 }
 
 typedef void(*formatter_func)(double t, double bitrate);
