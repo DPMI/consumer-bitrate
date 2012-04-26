@@ -67,12 +67,23 @@ static double roundtwo (double value)
 	return (floor (value + 0.0005));
 }
 
+static void default_formatter(double t, double bitrate){
+	cout << setiosflags(ios::fixed) << setprecision(15) << t << "\t" << bitrate << endl;
+}
+
+static void csv_formatter(double t, double bitrate){
+	fprintf(stdout, "%f;%f\n", t, bitrate);
+}
+
+typedef void(*formatter_func)(double t, double bitrate);
+static formatter_func formatter = default_formatter;
+
 static void printbitrate() {
 	//calculate bitrate
 	const double bitrate = roundtwo(bits /to_double(tSample));
 	//print bitrate greater than zero
 	if (bits > 0){
-		cout << setiosflags(ios::fixed) << setprecision(15) << to_double(start_time)<<"\t"<<bitrate <<"\n";
+		formatter(to_double(start_time), bitrate);
 	}
 	// reset start_time ; end_time; remaining_sampling interval
 	start_time = end_time;
@@ -104,6 +115,8 @@ static void show_usage(void){
 	       "  -p, --packets=N      Stop after N packets.\n"
 	       "  -t, --timeout=N      Wait for N ms while buffer fills [default: 1000ms].\n"
 	       "  -d, --calender       Show timestamps in human-readable format.\n"
+	       "      --format-csv     Use CSV output format.\n"
+	       "      --format-default Use default output format.\n"
 	       "  -h, --help           This text.\n\n");
 	filter_from_argv_usage();
 }
@@ -202,6 +215,11 @@ int main(int argc, char **argv){
 
 	filter_print(&filter, stderr, 0);
 
+	enum {
+		FMT_CSV = 500,
+		FMT_DEF
+	};
+
 	int op, option_index = -1;
 	static struct option long_options[]= {
 		{"content",  no_argument,       0, 'c'},
@@ -212,6 +230,8 @@ int main(int argc, char **argv){
 		{"sampleFrequency",  required_argument, 0, 'm'},
 		{"linkCapacity",  required_argument, 0, 'l'},
 		{"calender", no_argument,       0, 'd'},
+		{"format-csv", no_argument,     0, FMT_CSV},
+		{"format-default", no_argument, 0, FMT_DEF},
 		{"help",     no_argument,       0, 'h'},
 		{0, 0, 0, 0} /* sentinel */
 	};
@@ -219,6 +239,14 @@ int main(int argc, char **argv){
 		switch (op){
 		case 0:   /* long opt */
 		case '?': /* unknown opt */
+			break;
+
+		case FMT_CSV:
+			formatter = csv_formatter;
+			break;
+
+		case FMT_DEF:
+			formatter = default_formatter;
 			break;
 
 		case 'd':
