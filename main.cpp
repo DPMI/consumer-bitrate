@@ -1,11 +1,3 @@
-//we are at ip protocol capinfo
-
-//#define __STDC_FORMAT_MACROS
-
-//#ifdef HAVE_CONFIG_H
-//#include "config.h"
-//#endif /* HAVE_CONFIG_H */
-
 #include "caputils/caputils.h"
 #include "caputils/stream.h"
 #include "caputils/filter.h"
@@ -74,27 +66,6 @@ static double roundtwo (double value)
 {
 	return (floor (value + 0.0005));
 }
-
-/*
-  Created:      2003-02-20 12:40, Patrik.Carlsson@bth.se
-  Latest edit:  2003-02-20 10:30, Patrik.Carlsson@bth.se
-
-  Function:
-  int payLoadExtraction(*)
-  Return value:
-  Payload at given level.
-
-  Arguments (In Order):
-  Desired level, 0 physical, 1 link, 2 network, 3 transport
-  Description:
-  Returns the number of bytes a packet contains at level L
-
-
-
-*/
-//caphead is new one, data is old.
-
-
 
 static void printbitrate() {
 	//calculate bitrate
