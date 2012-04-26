@@ -50,7 +50,6 @@ static const char* iface = NULL;
 static struct timeval timeout = {1,0};
 static const char* program_name = NULL;
 
-
 qd_real remaining_samplinginterval;
 qd_real ref_time;
 qd_real start_time; // has to initialise when the first packet is read
@@ -71,12 +70,12 @@ void handle_sigint(int signum){
 }
 double round (double value)
 {
-return (floor(value + 0.0005));
+	return (floor(value + 0.0005));
 }
 
 double roundtwo (double value)
 {
-return (floor (value + 0.0005));
+	return (floor (value + 0.0005));
 }
 /*
   Created:      2003-02-20 12:40, Patrik.Carlsson@bth.se
@@ -99,16 +98,16 @@ return (floor (value + 0.0005));
 
 void printbitrate() {
 //calculate bitrate
-bitrate = roundtwo(bits /to_double(tSample));
+	bitrate = roundtwo(bits /to_double(tSample));
 //print bitrate greater than zero
-if (bits > 0){
-cout << setiosflags(ios::fixed) << setprecision(15) << to_double(start_time)<<"\t"<<bitrate <<"\n";
-}
+	if (bits > 0){
+		cout << setiosflags(ios::fixed) << setprecision(15) << to_double(start_time)<<"\t"<<bitrate <<"\n";
+	}
 // reset start_time ; end_time; remaining_sampling interval
-start_time = end_time;
-end_time = start_time + tSample;
-remaining_samplinginterval = tSample;
-bits = 0;
+	start_time = end_time;
+	end_time = start_time + tSample;
+	remaining_samplinginterval = tSample;
+	bits = 0;
 
 }
 static void show_usage(void){
@@ -121,15 +120,15 @@ static void show_usage(void){
 	       "  -i, --iface          For ethernet-based streams, this is the interface to listen\n"
 	       "                       on. For other streams it is ignored.\n"
 	       "  -m, --samplingFrequency Sampling frequency in Hertz \n"
-		"  -q, --level 		        Level to calculate bitrate {physical (default), link, network, transport and application}\n"
-	        "                         At level N , payload of particular layer is only considered, use filters to select particular streams.\n"
-	        "                         To calculate the bitrate at physical , use physical layer, Consider for Network layer use [-q network]\n"
-	        "                         It shall contain transport protocol header + payload\n"
-	        "                           - link: all bits captured at physical level, i.e link + network + transport + application\n"
-	        "                           - network: payload field at link layer , network + transport + application\n"
-	        "                           - transport: payload at network  layer, transport + application\n"
-	        "                           - application: The payload field at transport leve , ie.application\n"
-	        "                         Default is link\n"
+	       "  -q, --level 		        Level to calculate bitrate {physical (default), link, network, transport and application}\n"
+	       "                         At level N , payload of particular layer is only considered, use filters to select particular streams.\n"
+	       "                         To calculate the bitrate at physical , use physical layer, Consider for Network layer use [-q network]\n"
+	       "                         It shall contain transport protocol header + payload\n"
+	       "                           - link: all bits captured at physical level, i.e link + network + transport + application\n"
+	       "                           - network: payload field at link layer , network + transport + application\n"
+	       "                           - transport: payload at network  layer, transport + application\n"
+	       "                           - application: The payload field at transport leve , ie.application\n"
+	       "                         Default is link\n"
 	       "  -l, --linkCapacity   link Capacity in bits per second default 100 Mbps, (eg.input 100e6) \n"
 	       "  -p, --packets=N      Stop after N packets.\n"
 	       "  -t, --timeout=N      Wait for N ms while buffer fills [default: 1000ms].\n"
@@ -158,7 +157,7 @@ static int payLoadExtraction(int level, const cap_head* caphead) {
 	switch(ntohs(ether->h_proto)) {
 	case ETHERTYPE_IP:/* Packet contains an IP, PASS TWO! */
 		ip_hdr = (struct ip*)(caphead->payload + sizeof(cap_header) + sizeof(struct ethhdr));
-	  ipv4:
+	ipv4:
 
 		// payload size at network  (transport+app)
 		if ( level==2 ) {
@@ -211,20 +210,20 @@ static int payLoadExtraction(int level, const cap_head* caphead) {
 }
 
 int main(int argc, char **argv){
-  /* extract program name from path. e.g. /path/to/MArCd -> MArCd */
-  double sampleFrequency = 1.0; //default 1hz
-  tSample = 1.0/sampleFrequency;
-  double linkCapacity = 100e6;
-  int payLoadSize;
-  int level = 0;
-  bits = 0;
-  bitrate = 0;
-  const char* separator = strrchr(argv[0], '/');
-  if ( separator ){
-    program_name = separator + 1;
-  } else {
-    program_name = argv[0];
-  }
+	/* extract program name from path. e.g. /path/to/MArCd -> MArCd */
+	double sampleFrequency = 1.0; //default 1hz
+	tSample = 1.0/sampleFrequency;
+	double linkCapacity = 100e6;
+	int payLoadSize;
+	int level = 0;
+	bits = 0;
+	bitrate = 0;
+	const char* separator = strrchr(argv[0], '/');
+	if ( separator ){
+		program_name = separator + 1;
+	} else {
+		program_name = argv[0];
+	}
 
 	struct filter filter;
 	if ( filter_from_argv(&argc, argv, &filter) != 0 ){
@@ -235,17 +234,17 @@ int main(int argc, char **argv){
 
 	int op, option_index = -1;
 	static struct option long_options[]= {
-	{"content",  no_argument,       0, 'c'},
-	{"packets",  required_argument, 0, 'p'},
-	{"iface",    required_argument, 0, 'i'},
-	{"timeout",  required_argument, 0, 't'},
-	{"level",  required_argument, 0, 'q'},
-	{"sampleFrequency",  required_argument, 0, 'm'},
-	{"linkCapacity",  required_argument, 0, 'l'},
-	{"calender", no_argument,       0, 'd'},
-	{"help",     no_argument,       0, 'h'},
-	{0, 0, 0, 0} /* sentinel */
-};
+		{"content",  no_argument,       0, 'c'},
+		{"packets",  required_argument, 0, 'p'},
+		{"iface",    required_argument, 0, 'i'},
+		{"timeout",  required_argument, 0, 't'},
+		{"level",  required_argument, 0, 'q'},
+		{"sampleFrequency",  required_argument, 0, 'm'},
+		{"linkCapacity",  required_argument, 0, 'l'},
+		{"calender", no_argument,       0, 'd'},
+		{"help",     no_argument,       0, 'h'},
+		{0, 0, 0, 0} /* sentinel */
+	};
 	while ( (op = getopt_long(argc, argv, "hcdi:p:t:m:q:l:", long_options, &option_index)) != -1 ){
 		switch (op){
 		case 0:   /* long opt */
@@ -266,12 +265,12 @@ int main(int argc, char **argv){
 
 
 		case 't':
-			{
-				int tmp = atoi(optarg);
-				timeout.tv_sec  = tmp / 1000;
-				timeout.tv_usec = tmp % 1000 * 1000;
-			}
-			break;
+		{
+			int tmp = atoi(optarg);
+			timeout.tv_sec  = tmp / 1000;
+			timeout.tv_usec = tmp % 1000 * 1000;
+		}
+		break;
 		case 'q': /* --level */
 			if (strcmp (optarg, "link") == 0)
 				level = 0;
@@ -311,7 +310,7 @@ int main(int argc, char **argv){
 
 	int ret;
 	// initialise packet count
-     packets_count = 0;
+	packets_count = 0;
 	/* Open stream(s) */
 	struct stream* stream;
 	if ( (ret=stream_from_getopt(&stream, argv, optind, argc, iface, "-", program_name, 0)) != 0 ) {
@@ -325,7 +324,7 @@ int main(int argc, char **argv){
 
 	while ( keep_running ) {
 #ifdef debug
-         cout << "New Packet \n";
+		cout << "New Packet \n";
 #endif
 		/* A short timeout is used to allow the application to "breathe", i.e
 		 * terminate if SIGINT was received. */
@@ -339,28 +338,28 @@ int main(int argc, char **argv){
 		} else if ( ret != 0 ){
 			break; /* shutdown or error */
 		}
-                qd_real pkt1;
-				payLoadSize = payLoadExtraction(level, cp); //payload size
+		qd_real pkt1;
+		payLoadSize = payLoadExtraction(level, cp); //payload size
 #ifdef debug
-				cout<< "Payload is " << payLoadSize <<"\n";
+		cout<< "Payload is " << payLoadSize <<"\n";
 #endif
-				pkt1=(qd_real)(double)cp->ts.tv_sec+(qd_real)(double)(cp->ts.tv_psec/(double)PICODIVIDER); // extract timestamp.
-				packets_count ++;
-				if (packets_count == 1) {
-				ref_time = pkt1;
-				start_time = ref_time;
-				end_time = ref_time + tSample;
-				remaining_samplinginterval = end_time - start_time;
-				}
-                // while current timestamp - tend > sampling interval print bitrate.
+		pkt1=(qd_real)(double)cp->ts.tv_sec+(qd_real)(double)(cp->ts.tv_psec/(double)PICODIVIDER); // extract timestamp.
+		packets_count ++;
+		if (packets_count == 1) {
+			ref_time = pkt1;
+			start_time = ref_time;
+			end_time = ref_time + tSample;
+			remaining_samplinginterval = end_time - start_time;
+		}
+		// while current timestamp - tend > sampling interval print bitrate.
 #ifdef debug
 		cout << setiosflags(ios::fixed) << setprecision(14) << "PKT timestamp is : " << to_double(pkt1)<<"\t"<<" End of the sample time end_time :"
-		<<to_double(end_time) <<"Difference : " <<to_double((pkt1 - end_time))  <<"\n";
+		     <<to_double(end_time) <<"Difference : " <<to_double((pkt1 - end_time))  <<"\n";
 #endif
-		  while ( (to_double(pkt1) - to_double(end_time)) >= 0.0)
-		{
-		printbitrate();
-		}
+		while ( (to_double(pkt1) - to_double(end_time)) >= 0.0)
+			{
+				printbitrate();
+			}
 		// estimate transfer time of the packet
 		qd_real remaining_transfertime, transfertime_packet;
 		transfertime_packet = (payLoadSize*8)/linkCapacity;
@@ -368,22 +367,22 @@ int main(int argc, char **argv){
 		remaining_samplinginterval = end_time - pkt1; //added now
 #ifdef debug
 		cout << setiosflags(ios::fixed) << setprecision(12) << "Estimated transfer time of this packet is : " << to_double(transfertime_packet)<<"\n"<<" Estimating sampling interval left is :"
-		<<to_double(remaining_samplinginterval) <<"\n";
+		     <<to_double(remaining_samplinginterval) <<"\n";
 		//in case packet is small the packet will not enter this loop, now handle the big packet
 #endif   		//
 		while (remaining_transfertime >= remaining_samplinginterval)
-		{
+			{
 #ifdef debug
-		cout <<"Hello World \n";
+				cout <<"Hello World \n";
 #endif
-		bits += round(((to_double(remaining_samplinginterval))/(to_double(transfertime_packet)))*payLoadSize*8); //28 march
-		remaining_transfertime-=remaining_samplinginterval;
+				bits += round(((to_double(remaining_samplinginterval))/(to_double(transfertime_packet)))*payLoadSize*8); //28 march
+				remaining_transfertime-=remaining_samplinginterval;
 #ifdef debug
-		cout << setiosflags(ios::fixed) << setprecision(12) << to_double(remaining_transfertime)<<":RTT:RSI:"<< to_double(remaining_samplinginterval) <<":BITS"<<bits <<"\n";
+				cout << setiosflags(ios::fixed) << setprecision(12) << to_double(remaining_transfertime)<<":RTT:RSI:"<< to_double(remaining_samplinginterval) <<":BITS"<<bits <<"\n";
 #endif
-		printbitrate(); // print bitrate -- dont forget to reset the remaining sampling interval in print_bitrate; set it to tSample; reset Bits;
+				printbitrate(); // print bitrate -- dont forget to reset the remaining sampling interval in print_bitrate; set it to tSample; reset Bits;
 
-		}
+			}
 		// handle small packets or the remaining fractional packets which are in next interval
 		bits+= round(((to_double(remaining_transfertime))/(to_double(transfertime_packet)))*payLoadSize*8);
 		remaining_samplinginterval = end_time - pkt1 - transfertime_packet;
@@ -400,11 +399,11 @@ int main(int argc, char **argv){
 			//static char timeStr[25];
 			//struct tm tm = *gmtime(&time);
 			//strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &tm);
-		//	fprintf(stdout, "%s.", timeStr);
+			//	fprintf(stdout, "%s.", timeStr);
 		}
 
 		//fprintf(stdout, "%012"PRId64":LINK(%4d):CAPLEN(%4d):", cp->ts.tv_psec, cp->len, cp->caplen);
-                //int packetlength = cp->len;
+		//int packetlength = cp->len;
 
 
 		if ( max_packets > 0 && stat->matched >= max_packets) {
@@ -431,7 +430,3 @@ int main(int argc, char **argv){
 
 	return 0;
 }
-
-
-
-
