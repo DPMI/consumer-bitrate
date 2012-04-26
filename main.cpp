@@ -48,6 +48,8 @@ static qd_real start_time; // has to initialise when the first packet is read
 static qd_real end_time; //has to initialise till the next interval
 static qd_real tSample;
 static double bits; // make bits as qd
+static int viz_hack = 0;
+static double sampleFrequency = 1.0; //default 1hz
 
 static void handle_sigint(int signum){
 	if ( keep_running == 0 ){
@@ -81,9 +83,15 @@ static formatter_func formatter = default_formatter;
 static void printbitrate() {
 	//calculate bitrate
 	const double bitrate = roundtwo(bits /to_double(tSample));
+	double t = to_double(start_time);
+
+	if ( viz_hack ){
+		t = to_double(start_time*sampleFrequency);
+	}
+
 	//print bitrate greater than zero
 	if (bits > 0){
-		formatter(to_double(start_time), bitrate);
+		formatter(t, bitrate);
 	}
 	// reset start_time ; end_time; remaining_sampling interval
 	start_time = end_time;
@@ -117,6 +125,7 @@ static void show_usage(void){
 	       "  -d, --calender       Show timestamps in human-readable format.\n"
 	       "      --format-csv     Use CSV output format.\n"
 	       "      --format-default Use default output format.\n"
+	       "      --viz-hack\n"
 	       "  -h, --help           This text.\n\n");
 	filter_from_argv_usage();
 }
@@ -195,7 +204,6 @@ static int payLoadExtraction(int level, const cap_head* caphead) {
 
 int main(int argc, char **argv){
 	/* extract program name from path. e.g. /path/to/MArCd -> MArCd */
-	double sampleFrequency = 1.0; //default 1hz
 	tSample = 1.0/sampleFrequency;
 	double linkCapacity = 100e6;
 	int payLoadSize;
@@ -232,6 +240,7 @@ int main(int argc, char **argv){
 		{"calender", no_argument,       0, 'd'},
 		{"format-csv", no_argument,     0, FMT_CSV},
 		{"format-default", no_argument, 0, FMT_DEF},
+		{"viz-hack", no_argument,       &viz_hack, 1},
 		{"help",     no_argument,       0, 'h'},
 		{0, 0, 0, 0} /* sentinel */
 	};
