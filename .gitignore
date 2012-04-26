@@ -1,2 +1,4 @@
 bitrate
 core
+*.cap
+*.pcap
