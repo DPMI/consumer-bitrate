@@ -207,7 +207,6 @@ int main(int argc, char **argv){
 	/* extract program name from path. e.g. /path/to/MArCd -> MArCd */
 	tSample = 1.0/sampleFrequency;
 	double linkCapacity = 100e6;
-	int payLoadSize;
 	int level = 0;
 	bits = 0;
 	const char* separator = strrchr(argv[0], '/');
@@ -346,7 +345,7 @@ int main(int argc, char **argv){
 		}
 
 		qd_real current_time;
-		payLoadSize = payLoadExtraction(level, cp); //payload size
+		const int payLoadSize = payLoadExtraction(level, cp); //payload size
 #ifdef debug
 		cout<< "Payload is " << payLoadSize <<"\n";
 #endif
@@ -361,44 +360,23 @@ int main(int argc, char **argv){
 			first_packet = 0;
 		}
 
-		// while current timestamp - tend > sampling interval print bitrate.
-#ifdef debug
-		cout << setiosflags(ios::fixed) << setprecision(14) << "PKT timestamp is : " << to_double(current_time)<<"\t"<<" End of the sample time end_time :"
-		     <<to_double(end_time) <<"Difference : " <<to_double((current_time - end_time))  <<"\n";
-#endif
-
 		while ( (to_double(current_time) - to_double(end_time)) >= 0.0){
 			printbitrate();
 		}
 
 		// estimate transfer time of the packet
-		qd_real remaining_transfertime, transfertime_packet;
-		transfertime_packet = (payLoadSize*8)/linkCapacity;
-		remaining_transfertime = transfertime_packet;
+		const qd_real transfertime_packet = (payLoadSize*8)/linkCapacity;
+		qd_real remaining_transfertime = transfertime_packet;
 		remaining_samplinginterval = end_time - current_time; //added now
-#ifdef debug
-		cout << setiosflags(ios::fixed) << setprecision(12) << "Estimated transfer time of this packet is : " << to_double(transfertime_packet)<<"\n"<<" Estimating sampling interval left is :"
-		     <<to_double(remaining_samplinginterval) <<"\n";
-		//in case packet is small the packet will not enter this loop, now handle the big packet
-#endif   		//
-		while (remaining_transfertime >= remaining_samplinginterval)
-			{
-				bits += my_round(((to_double(remaining_samplinginterval))/(to_double(transfertime_packet)))*payLoadSize*8); //28 march
-				remaining_transfertime-=remaining_samplinginterval;
-#ifdef debug
-				cout << setiosflags(ios::fixed) << setprecision(12) << to_double(remaining_transfertime)<<":RTT:RSI:"<< to_double(remaining_samplinginterval) <<":BITS"<<bits <<"\n";
-#endif
-				printbitrate(); // print bitrate -- dont forget to reset the remaining sampling interval in print_bitrate; set it to tSample; reset Bits;
+		while (remaining_transfertime >= remaining_samplinginterval){
+			bits += my_round(((to_double(remaining_samplinginterval))/(to_double(transfertime_packet)))*payLoadSize*8); //28 march
+			remaining_transfertime-=remaining_samplinginterval;
+			printbitrate(); // print bitrate -- dont forget to reset the remaining sampling interval in print_bitrate; set it to tSample; reset Bits;
+		}
 
-			}
 		// handle small packets or the remaining fractional packets which are in next interval
 		bits+= my_round(((to_double(remaining_transfertime))/(to_double(transfertime_packet)))*payLoadSize*8);
 		remaining_samplinginterval = end_time - current_time - transfertime_packet;
-#ifdef debug
-		cout << setiosflags(ios::fixed) << setprecision(12) << to_double(remaining_transfertime)<<":RTT:RSII:"<< to_double(remaining_samplinginterval) <<":BITS"<<bits <<"\n";
-		cout << setiosflags(ios::fixed) << setprecision(12) << "Estimated sample interval after transfer is : " << to_double(remaining_samplinginterval)<<"\n";
-#endif
-		// handle remaining sampling interval for small packets;
 
 		if ( max_packets > 0 && stat->matched >= max_packets) {
 			/* Read enough pkts lets break. */
