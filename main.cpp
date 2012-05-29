@@ -271,7 +271,6 @@ int main(int argc, char **argv){
 			tSample = 1/(double) sampleFrequency;
 			break;
 
-
 		case 't':
 		{
 			int tmp = atoi(optarg);
@@ -345,6 +344,7 @@ int main(int argc, char **argv){
 		} else if ( ret != 0 ){
 			break; /* shutdown or error */
 		}
+
 		qd_real pkt1;
 		payLoadSize = payLoadExtraction(level, cp); //payload size
 #ifdef debug
@@ -366,10 +366,11 @@ int main(int argc, char **argv){
 		cout << setiosflags(ios::fixed) << setprecision(14) << "PKT timestamp is : " << to_double(pkt1)<<"\t"<<" End of the sample time end_time :"
 		     <<to_double(end_time) <<"Difference : " <<to_double((pkt1 - end_time))  <<"\n";
 #endif
-		while ( (to_double(pkt1) - to_double(end_time)) >= 0.0)
-			{
-				printbitrate();
-			}
+
+		while ( (to_double(pkt1) - to_double(end_time)) >= 0.0){
+			printbitrate();
+		}
+
 		// estimate transfer time of the packet
 		qd_real remaining_transfertime, transfertime_packet;
 		transfertime_packet = (payLoadSize*8)/linkCapacity;
@@ -382,9 +383,6 @@ int main(int argc, char **argv){
 #endif   		//
 		while (remaining_transfertime >= remaining_samplinginterval)
 			{
-#ifdef debug
-				cout <<"Hello World \n";
-#endif
 				bits += my_round(((to_double(remaining_samplinginterval))/(to_double(transfertime_packet)))*payLoadSize*8); //28 march
 				remaining_transfertime-=remaining_samplinginterval;
 #ifdef debug
@@ -401,20 +399,6 @@ int main(int argc, char **argv){
 		cout << setiosflags(ios::fixed) << setprecision(12) << "Estimated sample interval after transfer is : " << to_double(remaining_samplinginterval)<<"\n";
 #endif
 		// handle remaining sampling interval for small packets;
-
-		//fprintf(stdout, "[%4"PRIu64"]:%.4s:%.8s:", stat->matched, cp->nic, cp->mampid);
-		if( print_date == 0 ) {
-			//fprintf(stdout, "%u.", cp->ts.tv_sec);
-		} else {
-			//static char timeStr[25];
-			//struct tm tm = *gmtime(&time);
-			//strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &tm);
-			//	fprintf(stdout, "%s.", timeStr);
-		}
-
-		//fprintf(stdout, "%012"PRId64":LINK(%4d):CAPLEN(%4d):", cp->ts.tv_psec, cp->len, cp->caplen);
-		//int packetlength = cp->len;
-
 
 		if ( max_packets > 0 && stat->matched >= max_packets) {
 			/* Read enough pkts lets break. */
