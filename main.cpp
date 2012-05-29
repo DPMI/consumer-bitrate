@@ -345,16 +345,16 @@ int main(int argc, char **argv){
 			break; /* shutdown or error */
 		}
 
-		qd_real pkt1;
+		qd_real current_time;
 		payLoadSize = payLoadExtraction(level, cp); //payload size
 #ifdef debug
 		cout<< "Payload is " << payLoadSize <<"\n";
 #endif
-		pkt1=(qd_real)(double)cp->ts.tv_sec+(qd_real)(double)(cp->ts.tv_psec/(double)PICODIVIDER); // extract timestamp.
+		current_time=(qd_real)(double)cp->ts.tv_sec+(qd_real)(double)(cp->ts.tv_psec/(double)PICODIVIDER); // extract timestamp.
 
 		static int first_packet = 1;
 		if ( first_packet ) {
-			ref_time = pkt1;
+			ref_time = current_time;
 			start_time = ref_time;
 			end_time = ref_time + tSample;
 			remaining_samplinginterval = end_time - start_time;
@@ -363,11 +363,11 @@ int main(int argc, char **argv){
 
 		// while current timestamp - tend > sampling interval print bitrate.
 #ifdef debug
-		cout << setiosflags(ios::fixed) << setprecision(14) << "PKT timestamp is : " << to_double(pkt1)<<"\t"<<" End of the sample time end_time :"
-		     <<to_double(end_time) <<"Difference : " <<to_double((pkt1 - end_time))  <<"\n";
+		cout << setiosflags(ios::fixed) << setprecision(14) << "PKT timestamp is : " << to_double(current_time)<<"\t"<<" End of the sample time end_time :"
+		     <<to_double(end_time) <<"Difference : " <<to_double((current_time - end_time))  <<"\n";
 #endif
 
-		while ( (to_double(pkt1) - to_double(end_time)) >= 0.0){
+		while ( (to_double(current_time) - to_double(end_time)) >= 0.0){
 			printbitrate();
 		}
 
@@ -375,7 +375,7 @@ int main(int argc, char **argv){
 		qd_real remaining_transfertime, transfertime_packet;
 		transfertime_packet = (payLoadSize*8)/linkCapacity;
 		remaining_transfertime = transfertime_packet;
-		remaining_samplinginterval = end_time - pkt1; //added now
+		remaining_samplinginterval = end_time - current_time; //added now
 #ifdef debug
 		cout << setiosflags(ios::fixed) << setprecision(12) << "Estimated transfer time of this packet is : " << to_double(transfertime_packet)<<"\n"<<" Estimating sampling interval left is :"
 		     <<to_double(remaining_samplinginterval) <<"\n";
@@ -393,7 +393,7 @@ int main(int argc, char **argv){
 			}
 		// handle small packets or the remaining fractional packets which are in next interval
 		bits+= my_round(((to_double(remaining_transfertime))/(to_double(transfertime_packet)))*payLoadSize*8);
-		remaining_samplinginterval = end_time - pkt1 - transfertime_packet;
+		remaining_samplinginterval = end_time - current_time - transfertime_packet;
 #ifdef debug
 		cout << setiosflags(ios::fixed) << setprecision(12) << to_double(remaining_transfertime)<<":RTT:RSII:"<< to_double(remaining_samplinginterval) <<":BITS"<<bits <<"\n";
 		cout << setiosflags(ios::fixed) << setprecision(12) << "Estimated sample interval after transfer is : " << to_double(remaining_samplinginterval)<<"\n";
