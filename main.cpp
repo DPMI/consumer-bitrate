@@ -344,12 +344,8 @@ int main(int argc, char **argv){
 			break; /* shutdown or error */
 		}
 
-		qd_real current_time;
 		const int payLoadSize = payLoadExtraction(level, cp); //payload size
-#ifdef debug
-		cout<< "Payload is " << payLoadSize <<"\n";
-#endif
-		current_time=(qd_real)(double)cp->ts.tv_sec+(qd_real)(double)(cp->ts.tv_psec/(double)PICODIVIDER); // extract timestamp.
+		const qd_real current_time=(qd_real)(double)cp->ts.tv_sec+(qd_real)(double)(cp->ts.tv_psec/(double)PICODIVIDER); // extract timestamp.
 
 		static int first_packet = 1;
 		if ( first_packet ) {
