@@ -110,7 +110,6 @@ enum {
 static struct option long_options[]= {
 	{"packets",          required_argument, 0, 'p'},
 	{"iface",            required_argument, 0, 'i'},
-	{"timeout",          required_argument, 0, 't'},
 	{"level",            required_argument, 0, 'q'},
 	{"sampleFrequency",  required_argument, 0, 'm'},
 	{"linkCapacity",     required_argument, 0, 'l'},
@@ -143,7 +142,6 @@ static void show_usage(void){
 	       "                              Default is link\n"
 	       "  -l, --linkCapacity          link Capacity in bits per second default 100 Mbps, (eg.input 100e6) \n"
 	       "  -p, --packets=N             Stop after N packets.\n"
-	       "  -t, --timeout=N             Wait for N ms while buffer fills [default: 1000ms].\n"
 	       "  -z, --show-zero             Show bitrate when zero.\n"
 	       "  -x, --no-show-zero          Don't show bitrate when zero [default]\n"
 	       "      --format-csv            Use CSV output format.\n"
@@ -246,7 +244,7 @@ int main(int argc, char **argv){
 	filter_print(&filter, stderr, 0);
 
 	int op, option_index = -1;
-	while ( (op = getopt_long(argc, argv, "hi:p:t:m:q:l:zx", long_options, &option_index)) != -1 ){
+	while ( (op = getopt_long(argc, argv, "hi:p:m:q:l:zx", long_options, &option_index)) != -1 ){
 		switch (op){
 		case 0:   /* long opt */
 		case '?': /* unknown opt */
@@ -268,14 +266,6 @@ int main(int argc, char **argv){
 			sampleFrequency = atof (optarg);
 			tSample = 1/(double) sampleFrequency;
 			break;
-
-		case 't':
-		{
-			int tmp = atoi(optarg);
-			timeout.tv_sec  = tmp / 1000;
-			timeout.tv_usec = tmp % 1000 * 1000;
-		}
-		break;
 
 		case 'q': /* --level */
 			if (strcmp (optarg, "link") == 0)
