@@ -32,6 +32,8 @@
 #define STPBRIDGES 0x0026
 #define CDPVTP 0x016E
 
+#define VERSION "1.1"
+
 using namespace std;
 
 static int keep_running = 1;
@@ -124,32 +126,32 @@ static struct option long_options[]= {
 };
 
 static void show_usage(void){
-//	printf("%s-" VERSION "\n", program_name);
+	printf("%s-" VERSION " (libcap_utils-%s)\n", program_name, caputils_version(NULL));
 	printf("(C) 2004 Patrik Arlos <patrik.arlos@bth.se>\n");
 	printf("(C) 2012 David Sveningsson <david.sveningsson@bth.se>\n");
-	printf("(C) 2012 Vamsi krishna Konakalla <vkk@bth.se>\n");
+	printf("(C) 2012 Vamsi krishna Konakalla <vkk@bth.se>\n\n");
 	printf("Usage: %s [OPTIONS] STREAM\n", program_name);
-	printf("  -c, --content        Write full package content as hexdump. [default=no]\n"
-	       "  -i, --iface          For ethernet-based streams, this is the interface to listen\n"
-	       "                       on. For other streams it is ignored.\n"
-	       "  -m, --samplingFrequency Sampling frequency in Hertz \n"
-	       "  -q, --level 		        Level to calculate bitrate {physical (default), link, network, transport and application}\n"
-	       "                         At level N , payload of particular layer is only considered, use filters to select particular streams.\n"
-	       "                         To calculate the bitrate at physical , use physical layer, Consider for Network layer use [-q network]\n"
-	       "                         It shall contain transport protocol header + payload\n"
-	       "                           - link: all bits captured at physical level, i.e link + network + transport + application\n"
-	       "                           - network: payload field at link layer , network + transport + application\n"
-	       "                           - transport: payload at network  layer, transport + application\n"
-	       "                           - application: The payload field at transport leve , ie.application\n"
-	       "                         Default is link\n"
-	       "  -l, --linkCapacity   link Capacity in bits per second default 100 Mbps, (eg.input 100e6) \n"
-	       "  -p, --packets=N      Stop after N packets.\n"
-	       "  -t, --timeout=N      Wait for N ms while buffer fills [default: 1000ms].\n"
-	       "  -d, --calender       Show timestamps in human-readable format.\n"
-	       "      --format-csv     Use CSV output format.\n"
-	       "      --format-default Use default output format.\n"
+	printf("  -c, --content               Write full package content as hexdump. [default=no]\n"
+	       "  -i, --iface                 For ethernet-based streams, this is the interface to listen\n"
+	       "                              on. For other streams it is ignored.\n"
+	       "  -m, --samplingFrequency     Sampling frequency in Hertz \n"
+	       "  -q, --level 		            Level to calculate bitrate {physical (default), link, network, transport and application}\n"
+	       "                              At level N , payload of particular layer is only considered, use filters to select particular streams.\n"
+	       "                              To calculate the bitrate at physical , use physical layer, Consider for Network layer use [-q network]\n"
+	       "                              It shall contain transport protocol header + payload\n"
+	       "                                - link: all bits captured at physical level, i.e link + network + transport + application\n"
+	       "                                - network: payload field at link layer , network + transport + application\n"
+	       "                                - transport: payload at network  layer, transport + application\n"
+	       "                                - application: The payload field at transport leve , ie.application\n"
+	       "                              Default is link\n"
+	       "  -l, --linkCapacity          link Capacity in bits per second default 100 Mbps, (eg.input 100e6) \n"
+	       "  -p, --packets=N             Stop after N packets.\n"
+	       "  -t, --timeout=N             Wait for N ms while buffer fills [default: 1000ms].\n"
+	       "  -d, --calender              Show timestamps in human-readable format.\n"
+	       "      --format-csv            Use CSV output format.\n"
+	       "      --format-default        Use default output format.\n"
 	       "      --viz-hack\n"
-	       "  -h, --help           This text.\n\n");
+	       "  -h, --help                  This text.\n\n");
 	filter_from_argv_usage();
 }
 
