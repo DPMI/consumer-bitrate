@@ -329,17 +329,19 @@ int main(int argc, char **argv){
 	signal(SIGINT, handle_sigint);
 
 	while ( keep_running ) {
-#ifdef debug
-		cout << "New Packet \n";
-#endif
 		/* A short timeout is used to allow the application to "breathe", i.e
 		 * terminate if SIGINT was received. */
 		struct timeval tv = timeout;
+
+		static int first_packet = 1;
 
 		/* Read the next packet */
 		cap_head* cp;
 		ret = stream_read(stream, &cp, &filter, &tv);
 		if ( ret == EAGAIN ){
+			if ( !first_packet ){
+				printbitrate();
+			}
 			continue; /* timeout */
 		} else if ( ret != 0 ){
 			break; /* shutdown or error */
@@ -348,7 +350,6 @@ int main(int argc, char **argv){
 		const int payLoadSize = payLoadExtraction(level, cp); //payload size
 		const qd_real current_time=(qd_real)(double)cp->ts.tv_sec+(qd_real)(double)(cp->ts.tv_psec/(double)PICODIVIDER); // extract timestamp.
 
-		static int first_packet = 1;
 		if ( first_packet ) {
 			ref_time = current_time;
 			start_time = ref_time;
