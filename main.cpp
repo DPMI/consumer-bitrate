@@ -95,6 +95,7 @@ static void printbitrate() {
 	if ( show_zero || bits > 0 ){
 		formatter(t, bitrate);
 	}
+
 	// reset start_time ; end_time; remaining_sampling interval
 	start_time = end_time;
 	end_time = start_time + tSample;
@@ -264,7 +265,13 @@ int main(int argc, char **argv){
 
 		case 'm' : /* --samplefrequency */
 			sampleFrequency = atof (optarg);
-			tSample = 1/(double) sampleFrequency;
+			tSample = 1.0 / sampleFrequency;
+			{
+				int tmp = 1000000 / atoi(optarg);
+				timeout.tv_sec  = tmp / 1000000;
+				timeout.tv_usec = tmp % 1000000;
+				fprintf(stderr, "timeout %ld.%06d\n", timeout.tv_sec, timeout.tv_usec);
+			}
 			break;
 
 		case 'q': /* --level */
