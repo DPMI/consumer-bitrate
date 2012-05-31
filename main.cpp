@@ -37,8 +37,6 @@
 using namespace std;
 
 static int keep_running = 1;
-static int print_content = 0;
-static int print_date = 0;
 static unsigned int max_packets = 0;
 static const char* iface = NULL;
 static struct timeval timeout = {1,0};
@@ -110,14 +108,12 @@ enum {
 };
 
 static struct option long_options[]= {
-	{"content",          no_argument,       0, 'c'},
 	{"packets",          required_argument, 0, 'p'},
 	{"iface",            required_argument, 0, 'i'},
 	{"timeout",          required_argument, 0, 't'},
 	{"level",            required_argument, 0, 'q'},
 	{"sampleFrequency",  required_argument, 0, 'm'},
 	{"linkCapacity",     required_argument, 0, 'l'},
-	{"calender",         no_argument,       0, 'd'},
 	{"format-csv",       no_argument,       0, FMT_CSV},
 	{"format-default",   no_argument,       0, FMT_DEF},
 	{"viz-hack",         no_argument,       &viz_hack, 1},
@@ -131,8 +127,7 @@ static void show_usage(void){
 	printf("(C) 2012 David Sveningsson <david.sveningsson@bth.se>\n");
 	printf("(C) 2012 Vamsi krishna Konakalla <vkk@bth.se>\n\n");
 	printf("Usage: %s [OPTIONS] STREAM\n", program_name);
-	printf("  -c, --content               Write full package content as hexdump. [default=no]\n"
-	       "  -i, --iface                 For ethernet-based streams, this is the interface to listen\n"
+	printf("  -i, --iface                 For ethernet-based streams, this is the interface to listen\n"
 	       "                              on. For other streams it is ignored.\n"
 	       "  -m, --samplingFrequency     Sampling frequency in Hertz \n"
 	       "  -q, --level 		            Level to calculate bitrate {physical (default), link, network, transport and application}\n"
@@ -147,7 +142,6 @@ static void show_usage(void){
 	       "  -l, --linkCapacity          link Capacity in bits per second default 100 Mbps, (eg.input 100e6) \n"
 	       "  -p, --packets=N             Stop after N packets.\n"
 	       "  -t, --timeout=N             Wait for N ms while buffer fills [default: 1000ms].\n"
-	       "  -d, --calender              Show timestamps in human-readable format.\n"
 	       "      --format-csv            Use CSV output format.\n"
 	       "      --format-default        Use default output format.\n"
 	       "      --viz-hack\n"
@@ -248,7 +242,7 @@ int main(int argc, char **argv){
 	filter_print(&filter, stderr, 0);
 
 	int op, option_index = -1;
-	while ( (op = getopt_long(argc, argv, "hcdi:p:t:m:q:l:", long_options, &option_index)) != -1 ){
+	while ( (op = getopt_long(argc, argv, "hi:p:t:m:q:l:", long_options, &option_index)) != -1 ){
 		switch (op){
 		case 0:   /* long opt */
 		case '?': /* unknown opt */
@@ -262,13 +256,10 @@ int main(int argc, char **argv){
 			formatter = default_formatter;
 			break;
 
-		case 'd':
-			print_date = 1;
-			break;
-
 		case 'p':
 			max_packets = atoi(optarg);
 			break;
+
 		case 'm' : /* --samplefrequency */
 			sampleFrequency = atof (optarg);
 			tSample = 1/(double) sampleFrequency;
@@ -299,10 +290,6 @@ int main(int argc, char **argv){
 		case 'l': /* --link */
 			linkCapacity = atof (optarg);
 			cout << " Link Capacity input = " << linkCapacity << " bps\n";
-			break;
-
-		case 'c':
-			print_content = 1;
 			break;
 
 		case 'i':
