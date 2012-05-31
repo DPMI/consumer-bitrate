@@ -101,6 +101,23 @@ static void printbitrate() {
 	bits = 0;
 
 }
+
+static struct option long_options[]= {
+	{"content",  no_argument,       0, 'c'},
+	{"packets",  required_argument, 0, 'p'},
+	{"iface",    required_argument, 0, 'i'},
+	{"timeout",  required_argument, 0, 't'},
+	{"level",  required_argument, 0, 'q'},
+	{"sampleFrequency",  required_argument, 0, 'm'},
+	{"linkCapacity",  required_argument, 0, 'l'},
+	{"calender", no_argument,       0, 'd'},
+	{"format-csv", no_argument,     0, FMT_CSV},
+	{"format-default", no_argument, 0, FMT_DEF},
+	{"viz-hack", no_argument,       &viz_hack, 1},
+	{"help",     no_argument,       0, 'h'},
+	{0, 0, 0, 0} /* sentinel */
+};
+
 static void show_usage(void){
 //	printf("%s-" VERSION "\n", program_name);
 	printf("(C) 2004 Patrik Arlos <patrik.arlos@bth.se>\n");
@@ -229,21 +246,6 @@ int main(int argc, char **argv){
 	};
 
 	int op, option_index = -1;
-	static struct option long_options[]= {
-		{"content",  no_argument,       0, 'c'},
-		{"packets",  required_argument, 0, 'p'},
-		{"iface",    required_argument, 0, 'i'},
-		{"timeout",  required_argument, 0, 't'},
-		{"level",  required_argument, 0, 'q'},
-		{"sampleFrequency",  required_argument, 0, 'm'},
-		{"linkCapacity",  required_argument, 0, 'l'},
-		{"calender", no_argument,       0, 'd'},
-		{"format-csv", no_argument,     0, FMT_CSV},
-		{"format-default", no_argument, 0, FMT_DEF},
-		{"viz-hack", no_argument,       &viz_hack, 1},
-		{"help",     no_argument,       0, 'h'},
-		{0, 0, 0, 0} /* sentinel */
-	};
 	while ( (op = getopt_long(argc, argv, "hcdi:p:t:m:q:l:", long_options, &option_index)) != -1 ){
 		switch (op){
 		case 0:   /* long opt */
