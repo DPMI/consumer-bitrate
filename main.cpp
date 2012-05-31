@@ -103,18 +103,18 @@ static void printbitrate() {
 }
 
 static struct option long_options[]= {
-	{"content",  no_argument,       0, 'c'},
-	{"packets",  required_argument, 0, 'p'},
-	{"iface",    required_argument, 0, 'i'},
-	{"timeout",  required_argument, 0, 't'},
-	{"level",  required_argument, 0, 'q'},
+	{"content",          no_argument,       0, 'c'},
+	{"packets",          required_argument, 0, 'p'},
+	{"iface",            required_argument, 0, 'i'},
+	{"timeout",          required_argument, 0, 't'},
+	{"level",            required_argument, 0, 'q'},
 	{"sampleFrequency",  required_argument, 0, 'm'},
-	{"linkCapacity",  required_argument, 0, 'l'},
-	{"calender", no_argument,       0, 'd'},
-	{"format-csv", no_argument,     0, FMT_CSV},
-	{"format-default", no_argument, 0, FMT_DEF},
-	{"viz-hack", no_argument,       &viz_hack, 1},
-	{"help",     no_argument,       0, 'h'},
+	{"linkCapacity",     required_argument, 0, 'l'},
+	{"calender",         no_argument,       0, 'd'},
+	{"format-csv",       no_argument,       0, FMT_CSV},
+	{"format-default",   no_argument,       0, FMT_DEF},
+	{"viz-hack",         no_argument,       &viz_hack, 1},
+	{"help",             no_argument,       0, 'h'},
 	{0, 0, 0, 0} /* sentinel */
 };
 
