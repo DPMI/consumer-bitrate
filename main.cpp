@@ -37,6 +37,7 @@
 using namespace std;
 
 static int keep_running = 1;
+static int show_zero = 0;
 static unsigned int max_packets = 0;
 static const char* iface = NULL;
 static struct timeval timeout = {1,0};
@@ -91,7 +92,7 @@ static void printbitrate() {
 	}
 
 	//print bitrate greater than zero
-	if (bits > 0){
+	if ( show_zero || bits > 0 ){
 		formatter(t, bitrate);
 	}
 	// reset start_time ; end_time; remaining_sampling interval
@@ -99,7 +100,6 @@ static void printbitrate() {
 	end_time = start_time + tSample;
 	remaining_samplinginterval = tSample;
 	bits = 0;
-
 }
 
 enum {
@@ -114,6 +114,8 @@ static struct option long_options[]= {
 	{"level",            required_argument, 0, 'q'},
 	{"sampleFrequency",  required_argument, 0, 'm'},
 	{"linkCapacity",     required_argument, 0, 'l'},
+	{"show-zero",        no_argument,       0, 'z'},
+	{"no-show-zero",     no_argument,       0, 'x'},
 	{"format-csv",       no_argument,       0, FMT_CSV},
 	{"format-default",   no_argument,       0, FMT_DEF},
 	{"viz-hack",         no_argument,       &viz_hack, 1},
@@ -142,6 +144,8 @@ static void show_usage(void){
 	       "  -l, --linkCapacity          link Capacity in bits per second default 100 Mbps, (eg.input 100e6) \n"
 	       "  -p, --packets=N             Stop after N packets.\n"
 	       "  -t, --timeout=N             Wait for N ms while buffer fills [default: 1000ms].\n"
+	       "  -z, --show-zero             Show bitrate when zero.\n"
+	       "  -x, --no-show-zero          Don't show bitrate when zero [default]\n"
 	       "      --format-csv            Use CSV output format.\n"
 	       "      --format-default        Use default output format.\n"
 	       "      --viz-hack\n"
@@ -242,7 +246,7 @@ int main(int argc, char **argv){
 	filter_print(&filter, stderr, 0);
 
 	int op, option_index = -1;
-	while ( (op = getopt_long(argc, argv, "hi:p:t:m:q:l:", long_options, &option_index)) != -1 ){
+	while ( (op = getopt_long(argc, argv, "hi:p:t:m:q:l:zx", long_options, &option_index)) != -1 ){
 		switch (op){
 		case 0:   /* long opt */
 		case '?': /* unknown opt */
@@ -272,6 +276,7 @@ int main(int argc, char **argv){
 			timeout.tv_usec = tmp % 1000 * 1000;
 		}
 		break;
+
 		case 'q': /* --level */
 			if (strcmp (optarg, "link") == 0)
 				level = 0;
@@ -294,6 +299,14 @@ int main(int argc, char **argv){
 
 		case 'i':
 			iface = optarg;
+			break;
+
+		case 'z':
+			show_zero = 1;
+			break;
+
+		case 'x':
+			show_zero = 0;
 			break;
 
 		case 'h':
