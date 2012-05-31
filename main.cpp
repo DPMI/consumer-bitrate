@@ -102,6 +102,11 @@ static void printbitrate() {
 
 }
 
+enum {
+	FMT_CSV = 500,
+	FMT_DEF
+};
+
 static struct option long_options[]= {
 	{"content",          no_argument,       0, 'c'},
 	{"packets",          required_argument, 0, 'p'},
@@ -239,11 +244,6 @@ int main(int argc, char **argv){
 	}
 
 	filter_print(&filter, stderr, 0);
-
-	enum {
-		FMT_CSV = 500,
-		FMT_DEF
-	};
 
 	int op, option_index = -1;
 	while ( (op = getopt_long(argc, argv, "hcdi:p:t:m:q:l:", long_options, &option_index)) != -1 ){
