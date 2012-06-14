@@ -40,7 +40,7 @@ static int keep_running = 1;
 static int show_zero = 0;
 static unsigned int max_packets = 0;
 static const char* iface = NULL;
-static struct timeval timeout = {1,0};
+static const struct timeval timeout = {1,0};
 static const char* program_name = NULL;
 
 static qd_real remaining_samplinginterval;
@@ -266,12 +266,6 @@ int main(int argc, char **argv){
 		case 'm' : /* --samplefrequency */
 			sampleFrequency = atof (optarg);
 			tSample = 1.0 / sampleFrequency;
-			{
-				int tmp = 1000000 / atoi(optarg);
-				timeout.tv_sec  = tmp / 1000000;
-				timeout.tv_usec = tmp % 1000000;
-				fprintf(stderr, "timeout %ld.%06d\n", timeout.tv_sec, timeout.tv_usec);
-			}
 			break;
 
 		case 'q': /* --level */
