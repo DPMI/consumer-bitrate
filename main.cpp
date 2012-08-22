@@ -108,6 +108,7 @@ enum {
 	FMT_DEF
 };
 
+static const char* short_options = "p:i:q:m:l:zxh";
 static struct option long_options[]= {
 	{"packets",          required_argument, 0, 'p'},
 	{"iface",            required_argument, 0, 'i'},
@@ -245,7 +246,7 @@ int main(int argc, char **argv){
 	filter_print(&filter, stderr, 0);
 
 	int op, option_index = -1;
-	while ( (op = getopt_long(argc, argv, "hi:p:m:q:l:zx", long_options, &option_index)) != -1 ){
+	while ( (op = getopt_long(argc, argv, short_options, long_options, &option_index)) != -1 ){
 		switch (op){
 		case 0:   /* long opt */
 		case '?': /* unknown opt */
