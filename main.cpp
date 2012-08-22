@@ -395,7 +395,7 @@ int main(int argc, char **argv){
 			first_packet = 0;
 		}
 
-		while ( (to_double(current_time) - to_double(end_time)) >= 0.0){
+		while ( keep_running && (to_double(current_time) - to_double(end_time)) >= 0.0){
 			printbitrate();
 		}
 
@@ -403,7 +403,7 @@ int main(int argc, char **argv){
 		const qd_real transfertime_packet = (payLoadSize*8)/linkCapacity;
 		qd_real remaining_transfertime = transfertime_packet;
 		remaining_samplinginterval = end_time - current_time; //added now
-		while (remaining_transfertime >= remaining_samplinginterval){
+		while ( keep_running && remaining_transfertime >= remaining_samplinginterval){
 			bits += my_round(((to_double(remaining_samplinginterval))/(to_double(transfertime_packet)))*payLoadSize*8); //28 march
 			remaining_transfertime-=remaining_samplinginterval;
 			printbitrate(); // print bitrate -- dont forget to reset the remaining sampling interval in print_bitrate; set it to tSample; reset Bits;
