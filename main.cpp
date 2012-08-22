@@ -60,14 +60,14 @@ static void handle_sigint(int signum){
 	fprintf(stderr, "\rAborting capture.\n");
 	keep_running = 0;
 }
-static double my_round (double value)
-{
-	return (floor(value + 0.0005));
+static double my_round (double value){
+	static const double bias = 0.0005;
+	return (floor(value + bias));
 }
 
-static double roundtwo (double value)
-{
-	return (floor (value + 0.0005));
+static double roundtwo (double value){
+	static const double bias = 0.0005;
+	return (floor (value + bias));
 }
 
 static void default_formatter(double t, double bitrate){
