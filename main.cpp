@@ -132,7 +132,7 @@ static void show_usage(void){
 	printf("Usage: %s [OPTIONS] STREAM\n", program_name);
 	printf("  -i, --iface                 For ethernet-based streams, this is the interface to listen\n"
 	       "                              on. For other streams it is ignored.\n"
-	       "  -m, --sampleFrequency       Sampling frequency in Hertz\n"
+	       "  -m, --sampleFrequency       Sampling frequency in Hz. Valid prefixes are 'k', 'm' and 'g'.\n"
 	       "  -q, --level 		            Level to calculate bitrate {physical (default), link, network, transport and application}\n"
 	       "                              At level N , payload of particular layer is only considered, use filters to select particular streams.\n"
 	       "                              To calculate the bitrate at physical , use physical layer, Consider for Network layer use [-q network]\n"
@@ -225,6 +225,49 @@ static int payLoadExtraction(int level, const cap_head* caphead) {
 	return 0;
 }
 
+static int prefix_to_multiplier(char prefix){
+	prefix = tolower(prefix);
+	switch ( prefix ){
+	case 0: return 1;
+	case 'k': return 1e3;
+	case 'm': return 1e6;
+	case 'g': return 1e9;
+	default: return -1;
+	}
+}
+
+/**
+ * Get prefix from number represented by a string and removes the prefix by
+ * setting it to NULL.
+ * If no prefix was found it returns 0.
+ * E.g. "100k" -> 'k'.
+ */
+static char pop_prefix(char* string){
+	if ( *string == 0 ) return 0;
+
+	const size_t offset = strlen(string) - 1;
+	if ( ! isalpha(string[offset]) ){
+		return 0;
+	}
+
+	const char prefix = string[offset];
+	string[offset] = 0;
+	return prefix;
+}
+
+static void set_sample_frequency(char* string){
+	const char prefix = pop_prefix(string);
+	int multiplier = prefix_to_multiplier(prefix);
+
+	if ( multiplier == -1 ){
+		fprintf(stderr, "unknown prefix '%c' for --sampleFrequency, ignored", prefix);
+		multiplier = 1;
+	}
+
+	sampleFrequency = atof(string) * multiplier;
+	tSample = 1.0 / sampleFrequency;
+}
+
 int main(int argc, char **argv){
 	/* extract program name from path. e.g. /path/to/MArCd -> MArCd */
 	tSample = 1.0/sampleFrequency;
@@ -265,8 +308,7 @@ int main(int argc, char **argv){
 			break;
 
 		case 'm' : /* --sampleFrequency */
-			sampleFrequency = atof (optarg);
-			tSample = 1.0 / sampleFrequency;
+			set_sample_frequency(optarg);
 			break;
 
 		case 'q': /* --level */
