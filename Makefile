@@ -7,16 +7,13 @@
 
 CFLAGS  += -Wall -g -O0
 LDFLAGS +=
+PREFIX=/usr/local
 
-OBJECTd= main.o main_vamsi.o
-targetd= bitrate bitrate_vamsi
+targetd= bitrate
 
 all: $(targetd)
 
 bitrate: main.o
-	$(CXX) -o $@ $(LDFLAGS) $< $(shell pkg-config libcap_utils-0.7 libcap_filter-0.7 conserver-0.7 --libs) -lqd
-
-bitrate_vamsi: bitrate_vamsi.o
 	$(CXX) -o $@ $(LDFLAGS) $< $(shell pkg-config libcap_utils-0.7 libcap_filter-0.7 conserver-0.7 --libs) -lqd
 
 clean:
@@ -24,3 +21,6 @@ clean:
 
 %.o: %.cpp
 	$(CXX) $(CFLAGS) $(shell pkg-config libcap_stream-0.7 conserver-0.7 --cflags) -c $< -o $@
+
+install: bitrate
+	install -m 0755 bitrate $(PREFIX)/bin
