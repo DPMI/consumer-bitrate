@@ -260,7 +260,7 @@ static void set_sample_frequency(char* string){
 	int multiplier = prefix_to_multiplier(prefix);
 
 	if ( multiplier == -1 ){
-		fprintf(stderr, "unknown prefix '%c' for --sampleFrequency, ignored", prefix);
+		fprintf(stderr, "unknown prefix '%c' for --sampleFrequency, ignored.\n", prefix);
 		multiplier = 1;
 	}
 
