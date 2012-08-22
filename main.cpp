@@ -132,7 +132,7 @@ static void show_usage(void){
 	printf("Usage: %s [OPTIONS] STREAM\n", program_name);
 	printf("  -i, --iface                 For ethernet-based streams, this is the interface to listen\n"
 	       "                              on. For other streams it is ignored.\n"
-	       "  -m, --samplingFrequency     Sampling frequency in Hertz \n"
+	       "  -m, --sampleFrequency       Sampling frequency in Hertz\n"
 	       "  -q, --level 		            Level to calculate bitrate {physical (default), link, network, transport and application}\n"
 	       "                              At level N , payload of particular layer is only considered, use filters to select particular streams.\n"
 	       "                              To calculate the bitrate at physical , use physical layer, Consider for Network layer use [-q network]\n"
@@ -142,7 +142,7 @@ static void show_usage(void){
 	       "                                - transport: payload at network  layer, transport + application\n"
 	       "                                - application: The payload field at transport leve , ie.application\n"
 	       "                              Default is link\n"
-	       "  -l, --linkCapacity          link Capacity in bits per second default 100 Mbps, (eg.input 100e6) \n"
+	       "  -l, --linkCapacity          Link capacity in bits per second default 100 Mbps, (eg.input 100e6) \n"
 	       "  -p, --packets=N             Stop after N packets.\n"
 	       "  -z, --show-zero             Show bitrate when zero.\n"
 	       "  -x, --no-show-zero          Don't show bitrate when zero [default]\n"
@@ -264,7 +264,7 @@ int main(int argc, char **argv){
 			max_packets = atoi(optarg);
 			break;
 
-		case 'm' : /* --samplefrequency */
+		case 'm' : /* --sampleFrequency */
 			sampleFrequency = atof (optarg);
 			tSample = 1.0 / sampleFrequency;
 			break;
