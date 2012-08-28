@@ -1,26 +1,23 @@
-# Time-stamp: <02/11/09 10:40:24 INGA>
-# File: Makefile
-# LinkAggregator
-#clients
-#g++ -c bitrate_modified_feb_2012.cpp 
-#g++ -o bitrate bitrate_modified_feb_2012.o
+DESTDIR=/
+PREFIX=$(DESTDIR)/usr/local
+DEPDIR=.deps
+bin_PROGRAMS = bitrate
 
-CFLAGS  += -Wall -g -O0
-LDFLAGS +=
-PREFIX=/usr/local
-
-targetd= bitrate
-
-all: $(targetd)
+all: $(bin_PROGRAMS)
 
 bitrate: main.o
-	$(CXX) -o $@ $(LDFLAGS) $< $(shell pkg-config libcap_utils-0.7 libcap_filter-0.7 conserver-0.7 --libs) -lqd
+	$(CXX) -o $@ $(LDFLAGS) $^ $(shell pkg-config libcap_utils-0.7 libcap_filter-0.7 conserver-0.7 --libs) -lqd
 
 clean:
-	rm -f *.o $(targetd)
+	rm -rf *.o $(bin_PROGRAMS) $(DEPDIR)
 
-%.o: %.cpp
-	$(CXX) $(CFLAGS) $(shell pkg-config libcap_stream-0.7 conserver-0.7 --cflags) -c $< -o $@
+$(DEPDIR):
+	mkdir -p $@
 
-install: bitrate
+%.o: %.cpp Makefile $(DEPDIR)
+	$(CXX) -Wall -std=c++0x $(CFLAGS) $(shell pkg-config libcap_stream-0.7 conserver-0.7 --cflags) -c $< -MD -MF $(DEPDIR)/$(@:.o=.d) -o $@
+
+install: all
 	install -m 0755 bitrate $(PREFIX)/bin
+
+-include $(wildcard $(DEPDIR)/*.d)
