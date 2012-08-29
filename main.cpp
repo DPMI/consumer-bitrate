@@ -31,8 +31,6 @@
 
 #define VERSION "1.1"
 
-using namespace std;
-
 static int keep_running = 1;
 static int show_zero = 0;
 static unsigned int max_packets = 0;
@@ -68,7 +66,7 @@ static double roundtwo (double value){
 }
 
 static void default_formatter(double t, double bitrate){
-	cout << setiosflags(ios::fixed) << setprecision(15) << t << "\t" << bitrate << endl;
+	std::cout << setiosflags(std::ios::fixed) << std::setprecision(15) << t << "\t" << bitrate << std::endl;
 }
 
 static void csv_formatter(double t, double bitrate){
@@ -323,7 +321,7 @@ int main(int argc, char **argv){
 
 		case 'l': /* --link */
 			linkCapacity = atof (optarg);
-			cout << " Link Capacity input = " << linkCapacity << " bps\n";
+			std::cout << " Link Capacity input = " << linkCapacity << " bps\n";
 			break;
 
 		case 'i':
