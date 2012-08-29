@@ -122,7 +122,7 @@ void Extractor::process_stream(const stream_t st, const struct filter* filter){
 	const stream_stat_t* stat = stream_get_stat(st);
 	int ret;
 
-	while ( keep_running ) {
+	while ( keep_running && ( max_packets == 0 || stat->matched < max_packets ) ) {
 		/* A short timeout is used to allow the application to "breathe", i.e
 		 * terminate if SIGINT was received. */
 		struct timeval tv = {1,0};
@@ -140,12 +140,6 @@ void Extractor::process_stream(const stream_t st, const struct filter* filter){
 		}
 
 		calculate_samples(cp);
-
-		if ( max_packets > 0 && stat->matched >= max_packets) {
-			/* Read enough pkts lets break. */
-			fprintf(stderr, "%s: read enought packages\n", program_name);
-			break;
-		}
 	}
 
 	/* if ret == -1 the stream was closed properly (e.g EOF or TCP shutdown)
