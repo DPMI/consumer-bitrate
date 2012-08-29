@@ -6,7 +6,7 @@ bin_PROGRAMS = bitrate
 all: $(bin_PROGRAMS)
 
 bitrate: main.o
-	$(CXX) -o $@ $(LDFLAGS) $^ $(shell pkg-config libcap_utils-0.7 libcap_filter-0.7 conserver-0.7 --libs) -lqd
+	$(CXX) $(LDFLAGS) $^ $(shell pkg-config libcap_utils-0.7 libcap_filter-0.7 conserver-0.7 --libs) -lqd -o $@
 
 clean:
 	rm -rf *.o $(bin_PROGRAMS) $(DEPDIR)
