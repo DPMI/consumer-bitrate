@@ -271,7 +271,7 @@ int main(int argc, char **argv){
 	}
 
 	int ret;
-	// initialise packet count
+
 	/* Open stream(s) */
 	struct stream* stream;
 	if ( (ret=stream_from_getopt(&stream, argv, optind, argc, iface, "-", program_name, 0)) != 0 ) {
