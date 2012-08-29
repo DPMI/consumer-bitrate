@@ -175,8 +175,9 @@ void Extractor::process_stream(const stream_t st, const struct filter* filter){
 		qd_real remaining_transfertime = transfertime_packet;
 		remaining_samplinginterval = end_time - current_time; //added now
 		while ( keep_running && remaining_transfertime >= remaining_samplinginterval){
-			bits += my_round(((to_double(remaining_samplinginterval))/(to_double(transfertime_packet)))*payLoadSize*8); //28 march
-			remaining_transfertime-=remaining_samplinginterval;
+			const qd_real fraction = to_double(remaining_samplinginterval)/to_double(transfertime_packet);
+			bits += my_round(to_double(fraction) * payLoadSize*8);
+			remaining_transfertime -= remaining_samplinginterval;
 			do_sample();
 		}
 
