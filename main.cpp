@@ -42,10 +42,10 @@ static qd_real remaining_samplinginterval;
 static qd_real ref_time;
 static qd_real start_time; // has to initialise when the first packet is read
 static qd_real end_time; //has to initialise till the next interval
-static qd_real tSample;
-static double bits; // make bits as qd
+static double bits = 0; // make bits as qd
 static int viz_hack = 0;
 static double sampleFrequency = 1.0; //default 1hz
+static qd_real tSample = 1.0/sampleFrequency;
 
 static void handle_sigint(int signum){
 	if ( keep_running == 0 ){
@@ -265,16 +265,15 @@ static void set_sample_frequency(char* string){
 
 int main(int argc, char **argv){
 	/* extract program name from path. e.g. /path/to/MArCd -> MArCd */
-	tSample = 1.0/sampleFrequency;
-	double linkCapacity = 100e6;
-	int level = 0;
-	bits = 0;
 	const char* separator = strrchr(argv[0], '/');
 	if ( separator ){
 		program_name = separator + 1;
 	} else {
 		program_name = argv[0];
 	}
+
+	double linkCapacity = 100e6;
+	int level = 0;
 
 	struct filter filter;
 	if ( filter_from_argv(&argc, argv, &filter) != 0 ){
