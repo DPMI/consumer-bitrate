@@ -139,42 +139,7 @@ void Extractor::process_stream(const stream_t st, const struct filter* filter){
 			break; /* shutdown or error */
 		}
 
-		const qd_real current_time=(qd_real)(double)cp->ts.tv_sec+(qd_real)(double)(cp->ts.tv_psec/(double)PICODIVIDER); // extract timestamp.
-
-		if ( first_packet ) {
-			ref_time = current_time;
-			start_time = ref_time;
-			end_time = ref_time + tSample;
-			remaining_samplinginterval = end_time - start_time;
-			first_packet = false;
-		}
-
-		while ( keep_running && (to_double(current_time) - to_double(end_time)) >= 0.0){
-			do_sample();
-		}
-
-		// estimate transfer time of the packet
-		const unsigned long packet_bits = payloadExtraction(level, cp) * 8;
-		transfertime_packet = (double)packet_bits / link_capacity;
-
-		/* split large packets into multiple samples */
-		int packet_samples = 1;
-		remaining_transfertime = transfertime_packet;
-		remaining_samplinginterval = end_time - current_time;
-		while ( keep_running && remaining_transfertime >= remaining_samplinginterval){
-			const qd_real fraction = to_double(remaining_samplinginterval) / to_double(transfertime_packet);
-			accumulate(fraction, packet_bits, cp, packet_samples++);
-			remaining_transfertime -= remaining_samplinginterval;
-			do_sample();
-		}
-
-		/* If the previous loop was broken by keep_running we should not sample the remaining data */
-		if ( !keep_running ) break;
-
-		// handle small packets or the remaining fractional packets which are in next interval
-		const qd_real fraction = to_double(remaining_transfertime) / to_double(transfertime_packet);
-		accumulate(fraction, packet_bits, cp, packet_samples++);
-		remaining_samplinginterval = end_time - current_time - transfertime_packet;
+		calculate_samples(cp);
 
 		if ( max_packets > 0 && stat->matched >= max_packets) {
 			/* Read enough pkts lets break. */
@@ -189,6 +154,45 @@ void Extractor::process_stream(const stream_t st, const struct filter* filter){
 	if ( ret > 0 && ret != EINTR ){
 		fprintf(stderr, "stream_read() returned 0x%08X: %s\n", ret, caputils_error_string(ret));
 	}
+}
+
+void Extractor::calculate_samples(const cap_head* cp){
+	const qd_real current_time=(qd_real)(double)cp->ts.tv_sec+(qd_real)(double)(cp->ts.tv_psec/(double)PICODIVIDER); // extract timestamp.
+	const unsigned long packet_bits = payloadExtraction(level, cp) * 8;
+
+	if ( first_packet ) {
+		ref_time = current_time;
+		start_time = ref_time;
+		end_time = ref_time + tSample;
+		remaining_samplinginterval = end_time - start_time;
+		first_packet = false;
+	}
+
+	while ( keep_running && (to_double(current_time) - to_double(end_time)) >= 0.0){
+		do_sample();
+	}
+
+	// estimate transfer time of the packet
+	transfertime_packet = (double)packet_bits / link_capacity;
+
+	/* split large packets into multiple samples */
+	int packet_samples = 1;
+	remaining_transfertime = transfertime_packet;
+	remaining_samplinginterval = end_time - current_time;
+	while ( keep_running && remaining_transfertime >= remaining_samplinginterval){
+		const qd_real fraction = to_double(remaining_samplinginterval) / to_double(transfertime_packet);
+		accumulate(fraction, packet_bits, cp, packet_samples++);
+		remaining_transfertime -= remaining_samplinginterval;
+		do_sample();
+	}
+
+	/* If the previous loop was broken by keep_running we should not sample the remaining data */
+	if ( !keep_running ) return;
+
+	// handle small packets or the remaining fractional packets which are in next interval
+	const qd_real fraction = to_double(remaining_transfertime) / to_double(transfertime_packet);
+	accumulate(fraction, packet_bits, cp, packet_samples++);
+	remaining_samplinginterval = end_time - current_time - transfertime_packet;
 }
 
 void Extractor::do_sample(){

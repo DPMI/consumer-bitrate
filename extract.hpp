@@ -107,6 +107,8 @@ protected:
 	qd_real tSample;
 
 private:
+	void calculate_samples(const cap_head* cp);
+
 	bool first_packet;
 	unsigned int max_packets;
 	unsigned long link_capacity;
