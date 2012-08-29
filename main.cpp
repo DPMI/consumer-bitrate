@@ -28,9 +28,6 @@
 #include <qd/qd_real.h>
 #include <math.h>
 #include <iomanip>
-//#define debug
-#define STPBRIDGES 0x0026
-#define CDPVTP 0x016E
 
 #define VERSION "1.1"
 
