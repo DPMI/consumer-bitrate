@@ -180,6 +180,9 @@ void Extractor::process_stream(const stream_t st, const struct filter* filter){
 			do_sample();
 		}
 
+		/* If the previous loop was broken by keep_running we should not sample the remaining data */
+		if ( !keep_running ) break;
+
 		// handle small packets or the remaining fractional packets which are in next interval
 		bits+= my_round(((to_double(remaining_transfertime))/(to_double(transfertime_packet)))*payLoadSize*8);
 		remaining_samplinginterval = end_time - current_time - transfertime_packet;
