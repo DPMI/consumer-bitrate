@@ -42,11 +42,17 @@ static void handle_sigint(int signum){
 	keep_running = false;
 }
 
+static double my_round (double value){
+	static const double bias = 0.0005;
+	return (floor(value + bias));
+}
+
 class BitrateCalculator: public Extractor {
 public:
 	BitrateCalculator()
 		: Extractor()
-		, formatter(default_formatter){
+		, formatter(default_formatter)
+		, bits(0.0){
 
 	}
 
@@ -62,15 +68,27 @@ public:
 		}
 	}
 
+	virtual void reset(){
+		bits = 0.0;
+	}
+
 protected:
-	virtual void write_sample(double t, double bitrate){
+	virtual void write_sample(double t){
+		const double bitrate = my_round(bits / to_double(tSample));
+
 		if ( viz_hack ){
-			t *= get_sampling_frequency();
+			t *= sampleFrequency;
 		}
 
 		if ( show_zero || bitrate > 0 ){
 			formatter(t, bitrate);
 		}
+
+		bits = 0.0;
+	}
+
+	virtual void accumulate(qd_real fraction, unsigned long packet_bits, const cap_head* cp, int counter){
+		bits += my_round(to_double(fraction) * packet_bits);
 	}
 
 private:
@@ -86,6 +104,7 @@ private:
 	}
 
 	formatter_func formatter;
+	double bits;
 };
 
 static const char* short_options = "p:i:q:m:l:zxh";

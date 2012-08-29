@@ -50,8 +50,6 @@ public:
 	 */
 	void set_sampling_frequency(const char* str);
 
-	double get_sampling_frequency() const;
-
 	/**
 	 * Set level to extract size from.
 	 */
@@ -77,7 +75,16 @@ protected:
 	/**
 	 * Write a sample.
 	 */
-	virtual void write_sample(double t, double bitrate) = 0;
+	virtual void write_sample(double t) = 0;
+
+	/**
+	 * Accumulate value from packet.
+	 *
+	 * @param bits Total number of bits in packet.
+	 * @param cp Packet header.
+	 * @param counter Number of times this packet has been sampled.
+	 */
+	virtual void accumulate(qd_real fraction, unsigned long bits, const cap_head* cp, int counter) = 0;
 
 	/**
 	 * Calculate bitrate for current sample and move time forward.
@@ -90,20 +97,20 @@ protected:
 	 */
 	size_t payloadExtraction(int level, const cap_head* caphead);
 
+	qd_real ref_time;
+	qd_real start_time;
+	qd_real end_time;
+	qd_real remaining_samplinginterval;
+	qd_real remaining_transfertime;
+	qd_real transfertime_packet;
+	double sampleFrequency;
+	qd_real tSample;
+
 private:
 	bool first_packet;
 	unsigned int max_packets;
 	unsigned long link_capacity;
 	int level;
-
-	double bits;
-	qd_real ref_time;
-	qd_real start_time; // has to initialise when the first packet is read
-	qd_real end_time; //has to initialise till the next interval
-	qd_real remaining_samplinginterval;
-	double sampleFrequency;
-	qd_real tSample;
-
 };
 
 #endif /* EXTRACT_H */
