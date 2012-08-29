@@ -155,7 +155,7 @@ void Extractor::process_stream(const stream_t st, const struct filter* filter){
 			break; /* shutdown or error */
 		}
 
-		const int payLoadSize = payloadExtraction(level, cp); //payload size
+		const unsigned long packet_bits = payloadExtraction(level, cp) * 8;
 		const qd_real current_time=(qd_real)(double)cp->ts.tv_sec+(qd_real)(double)(cp->ts.tv_psec/(double)PICODIVIDER); // extract timestamp.
 
 		if ( first_packet ) {
@@ -171,12 +171,12 @@ void Extractor::process_stream(const stream_t st, const struct filter* filter){
 		}
 
 		// estimate transfer time of the packet
-		const qd_real transfertime_packet = (double)(payLoadSize*8) / link_capacity;
+		const qd_real transfertime_packet = (double)packet_bits / link_capacity;
 		qd_real remaining_transfertime = transfertime_packet;
 		remaining_samplinginterval = end_time - current_time; //added now
 		while ( keep_running && remaining_transfertime >= remaining_samplinginterval){
 			const qd_real fraction = to_double(remaining_samplinginterval)/to_double(transfertime_packet);
-			bits += my_round(to_double(fraction) * payLoadSize*8);
+			bits += my_round(to_double(fraction) * packet_bits);
 			remaining_transfertime -= remaining_samplinginterval;
 			do_sample();
 		}
@@ -185,7 +185,7 @@ void Extractor::process_stream(const stream_t st, const struct filter* filter){
 		if ( !keep_running ) break;
 
 		// handle small packets or the remaining fractional packets which are in next interval
-		bits+= my_round(((to_double(remaining_transfertime))/(to_double(transfertime_packet)))*payLoadSize*8);
+		bits+= my_round(((to_double(remaining_transfertime))/(to_double(transfertime_packet)))*packet_bits);
 		remaining_samplinginterval = end_time - current_time - transfertime_packet;
 
 		if ( max_packets > 0 && stat->matched >= max_packets) {
