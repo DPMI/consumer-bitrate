@@ -12,10 +12,6 @@
 #include <errno.h>
 #include <signal.h>
 
-#include <netinet/ip.h>
-#include <netinet/tcp.h>
-#include <netinet/udp.h>
-#include <netinet/ip_icmp.h>
 #include <sys/time.h>
 #include <netdb.h>
 #include <cstdlib>
@@ -28,6 +24,8 @@
 #include <qd/qd_real.h>
 #include <math.h>
 #include <iomanip>
+
+#include "extract.hpp"
 
 #define VERSION "1.1"
 
@@ -146,78 +144,6 @@ static void show_usage(void){
 	       "      --viz-hack\n"
 	       "  -h, --help                  This text.\n\n");
 	filter_from_argv_usage();
-}
-
-static int payLoadExtraction(int level, const cap_head* caphead) {
-	// payload size at physical (ether+network+transport+app)
-	if ( level==0 ) {
-		return caphead->len;
-	};
-
-	// payload size at link  (network+transport+app)
-	if ( level==1 ) {
-		return caphead->len - sizeof(struct ethhdr);
-	};
-
-	const struct ethhdr *ether = caphead->ethhdr;
-	const struct ip* ip_hdr = NULL;
-	struct tcphdr* tcp = NULL;
-	struct udphdr* udp = NULL;
-	size_t vlan_offset = 0;
-
-	switch(ntohs(ether->h_proto)) {
-	case ETHERTYPE_IP:/* Packet contains an IP, PASS TWO! */
-		ip_hdr = (struct ip*)(caphead->payload + sizeof(cap_header) + sizeof(struct ethhdr));
-	ipv4:
-
-		// payload size at network  (transport+app)
-		if ( level==2 ) {
-			return ntohs(ip_hdr->ip_len)-4*ip_hdr->ip_hl;
-		};
-
-		switch(ip_hdr->ip_p) { /* Test what transport protocol is present */
-		case IPPROTO_TCP: /* TCP */
-			tcp = (struct tcphdr*)(caphead->payload + sizeof(cap_header) + sizeof(struct ethhdr) + vlan_offset + 4*ip_hdr->ip_hl);
-			if(level==3) return ntohs(ip_hdr->ip_len)-4*tcp->doff-4*ip_hdr->ip_hl;  // payload size at transport  (app)
-			break;
-		case IPPROTO_UDP: /* UDP */
-			udp = (struct udphdr*)(caphead->payload + sizeof(cap_header) + sizeof(struct ethhdr) + vlan_offset + 4*ip_hdr->ip_hl);
-			if(level==3) return ntohs(udp->len)-8;                     // payload size at transport  (app)
-			break;
-		default:
-			fprintf(stderr, "Unknown IP transport protocol: %d\n", ip_hdr->ip_p);
-			return 0; /* there is no way to know the actual payload size here */
-		}
-		break;
-
-	case ETHERTYPE_VLAN:
-		ip_hdr = (struct ip*)(caphead->payload + sizeof(cap_header) + sizeof(struct ether_vlan_header));
-		vlan_offset = 4;
-		goto ipv4;
-
-	case ETHERTYPE_IPV6:
-		fprintf(stderr, "IPv6 not handled, ignored\n");
-		return 0;
-
-	case ETHERTYPE_ARP:
-		fprintf(stderr, "ARP not handled, ignored\n");
-		return 0;
-
-	case STPBRIDGES:
-		fprintf(stderr, "STP not handled, ignored\n");
-		return 0;
-
-	case CDPVTP:
-		fprintf(stderr, "CDPVTP not handled, ignored\n");
-		return 0;
-
-	default:      /* Packet contains unknown link . */
-		fprintf(stderr, "Unknown ETHERTYPE 0x%0x \n", ntohs(ether->h_proto));
-		return 0; /* there is no way to know the actual payload size here, a zero will ignore it in the calculation */
-	}
-
-	fprintf(stderr, "packet wasn't handled by payLoadExtraction, ignored\n");
-	return 0;
 }
 
 static int prefix_to_multiplier(char prefix){
@@ -376,7 +302,7 @@ int main(int argc, char **argv){
 			break; /* shutdown or error */
 		}
 
-		const int payLoadSize = payLoadExtraction(level, cp); //payload size
+		const int payLoadSize = payloadExtraction(level, cp); //payload size
 		const qd_real current_time=(qd_real)(double)cp->ts.tv_sec+(qd_real)(double)(cp->ts.tv_psec/(double)PICODIVIDER); // extract timestamp.
 
 		if ( first_packet ) {
