@@ -158,7 +158,6 @@ void Extractor::calculate_samples(const cap_head* cp){
 		ref_time = current_time;
 		start_time = ref_time;
 		end_time = ref_time + tSample;
-		remaining_samplinginterval = tSample;
 		first_packet = false;
 	}
 
