@@ -266,7 +266,7 @@ int main(int argc, char **argv){
 			return 0;
 
 		default:
-			printf ("?? getopt returned character code 0%o ??\n", op);
+			fprintf (stderr, "%s: ?? getopt returned character code 0%o ??\n", program_name, op);
 		}
 	}
 
@@ -333,7 +333,7 @@ int main(int argc, char **argv){
 
 		if ( max_packets > 0 && stat->matched >= max_packets) {
 			/* Read enough pkts lets break. */
-			printf("read enought packages\n");
+			fprintf(stderr, "%s: read enought packages\n", program_name);
 			break;
 		}
 	}
