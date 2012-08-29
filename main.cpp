@@ -21,7 +21,6 @@
 #include <cstring>
 #include <string>
 #include <iostream>
-#include <qd/qd_real.h>
 #include <math.h>
 #include <iomanip>
 
@@ -29,76 +28,64 @@
 
 #define VERSION "1.1"
 
-static int keep_running = 1;
 static int show_zero = 0;
-static unsigned int max_packets = 0;
-static const char* iface = NULL;
-static const struct timeval timeout = {1,0};
-static const char* program_name = NULL;
-
-static qd_real remaining_samplinginterval;
-static qd_real ref_time;
-static qd_real start_time; // has to initialise when the first packet is read
-static qd_real end_time; //has to initialise till the next interval
-static double bits = 0; // make bits as qd
 static int viz_hack = 0;
-static double sampleFrequency = 1.0; //default 1hz
-static qd_real tSample = 1.0/sampleFrequency;
+static const char* iface = NULL;
+const char* program_name = NULL;
 
 static void handle_sigint(int signum){
-	if ( keep_running == 0 ){
+	if ( !keep_running ){
 		fprintf(stderr, "\rGot SIGINT again, terminating.\n");
 		abort();
 	}
 	fprintf(stderr, "\rAborting capture.\n");
-	keep_running = 0;
-}
-static double my_round (double value){
-	static const double bias = 0.0005;
-	return (floor(value + bias));
+	keep_running = false;
 }
 
-static double roundtwo (double value){
-	static const double bias = 0.0005;
-	return (floor (value + bias));
-}
+class BitrateCalculator: public Extractor {
+public:
+	BitrateCalculator()
+		: Extractor()
+		, formatter(default_formatter){
 
-static void default_formatter(double t, double bitrate){
-	std::cout << setiosflags(std::ios::fixed) << std::setprecision(15) << t << "\t" << bitrate << std::endl;
-}
-
-static void csv_formatter(double t, double bitrate){
-	fprintf(stdout, "%f;%f\n", t, bitrate);
-	fflush(stdout);
-}
-
-typedef void(*formatter_func)(double t, double bitrate);
-static formatter_func formatter = default_formatter;
-
-static void printbitrate() {
-	//calculate bitrate
-	const double bitrate = roundtwo(bits /to_double(tSample));
-	double t = to_double(start_time);
-
-	if ( viz_hack ){
-		t = to_double(start_time*sampleFrequency);
 	}
 
-	//print bitrate greater than zero
-	if ( show_zero || bits > 0 ){
-		formatter(t, bitrate);
+	enum Formatter {
+		FMT_CSV = 500,
+		FMT_DEF
+	};
+
+	void set_formatter(enum Formatter format){
+		switch (format){
+		case FMT_CSV: formatter = csv_formatter; break;
+		case FMT_DEF: formatter = default_formatter; break;
+		}
 	}
 
-	// reset start_time ; end_time; remaining_sampling interval
-	start_time = end_time;
-	end_time = start_time + tSample;
-	remaining_samplinginterval = tSample;
-	bits = 0;
-}
+protected:
+	virtual void write_sample(double t, double bitrate){
+		if ( viz_hack ){
+			t *= get_sampling_frequency();
+		}
 
-enum {
-	FMT_CSV = 500,
-	FMT_DEF
+		if ( show_zero || bitrate > 0 ){
+			formatter(t, bitrate);
+		}
+	}
+
+private:
+	typedef void(*formatter_func)(double t, double bitrate);
+
+	static void default_formatter(double t, double bitrate){
+		std::cout << setiosflags(std::ios::fixed) << std::setprecision(15) << t << "\t" << bitrate << std::endl;
+	}
+
+	static void csv_formatter(double t, double bitrate){
+		fprintf(stdout, "%f;%f\n", t, bitrate);
+		fflush(stdout);
+	}
+
+	formatter_func formatter;
 };
 
 static const char* short_options = "p:i:q:m:l:zxh";
@@ -110,8 +97,8 @@ static struct option long_options[]= {
 	{"linkCapacity",     required_argument, 0, 'l'},
 	{"show-zero",        no_argument,       0, 'z'},
 	{"no-show-zero",     no_argument,       0, 'x'},
-	{"format-csv",       no_argument,       0, FMT_CSV},
-	{"format-default",   no_argument,       0, FMT_DEF},
+	{"format-csv",       no_argument,       0, BitrateCalculator::FMT_CSV},
+	{"format-default",   no_argument,       0, BitrateCalculator::FMT_DEF},
 	{"viz-hack",         no_argument,       &viz_hack, 1},
 	{"help",             no_argument,       0, 'h'},
 	{0, 0, 0, 0} /* sentinel */
@@ -146,49 +133,6 @@ static void show_usage(void){
 	filter_from_argv_usage();
 }
 
-static int prefix_to_multiplier(char prefix){
-	prefix = tolower(prefix);
-	switch ( prefix ){
-	case 0: return 1;
-	case 'k': return 1e3;
-	case 'm': return 1e6;
-	case 'g': return 1e9;
-	default: return -1;
-	}
-}
-
-/**
- * Get prefix from number represented by a string and removes the prefix by
- * setting it to NULL.
- * If no prefix was found it returns 0.
- * E.g. "100k" -> 'k'.
- */
-static char pop_prefix(char* string){
-	if ( *string == 0 ) return 0;
-
-	const size_t offset = strlen(string) - 1;
-	if ( ! isalpha(string[offset]) ){
-		return 0;
-	}
-
-	const char prefix = string[offset];
-	string[offset] = 0;
-	return prefix;
-}
-
-static void set_sample_frequency(char* string){
-	const char prefix = pop_prefix(string);
-	int multiplier = prefix_to_multiplier(prefix);
-
-	if ( multiplier == -1 ){
-		fprintf(stderr, "unknown prefix '%c' for --sampleFrequency, ignored.\n", prefix);
-		multiplier = 1;
-	}
-
-	sampleFrequency = atof(string) * multiplier;
-	tSample = 1.0 / sampleFrequency;
-}
-
 int main(int argc, char **argv){
 	/* extract program name from path. e.g. /path/to/MArCd -> MArCd */
 	const char* separator = strrchr(argv[0], '/');
@@ -198,13 +142,12 @@ int main(int argc, char **argv){
 		program_name = argv[0];
 	}
 
-	double linkCapacity = 100e6;
-	int level = 0;
-
 	struct filter filter;
 	if ( filter_from_argv(&argc, argv, &filter) != 0 ){
 		return 0; /* error already shown */
 	}
+
+	BitrateCalculator app;
 
 	int op, option_index = -1;
 	while ( (op = getopt_long(argc, argv, short_options, long_options, &option_index)) != -1 ){
@@ -213,40 +156,25 @@ int main(int argc, char **argv){
 		case '?': /* unknown opt */
 			break;
 
-		case FMT_CSV:
-			formatter = csv_formatter;
-			break;
-
-		case FMT_DEF:
-			formatter = default_formatter;
+		case BitrateCalculator::FMT_CSV:
+		case BitrateCalculator::FMT_DEF:
+			app.set_formatter((enum BitrateCalculator::Formatter)op);
 			break;
 
 		case 'p':
-			max_packets = atoi(optarg);
+			app.set_max_packets(atoi(optarg));
 			break;
 
 		case 'm' : /* --sampleFrequency */
-			set_sample_frequency(optarg);
+			app.set_sampling_frequency(optarg);
 			break;
 
 		case 'q': /* --level */
-			if (strcmp (optarg, "link") == 0)
-				level = 0;
-			else if ( strcmp (optarg, "network" ) == 0)
-				level = 1;
-			else if (strcmp (optarg ,"transport") == 0)
-				level = 2;
-			else if (strcmp (optarg , "application") == 0)
-				level = 3;
-			else {
-				fprintf(stderr, "unrecognised level arg %s \n", optarg);
-				exit(1);
-			}
+			app.set_extraction_level(optarg);
 			break;
 
 		case 'l': /* --link */
-			linkCapacity = atof (optarg);
-			std::cout << " Link Capacity input = " << linkCapacity << " bps\n";
+			app.set_link_capacity(optarg);
 			break;
 
 		case 'i':
@@ -270,6 +198,9 @@ int main(int argc, char **argv){
 		}
 	}
 
+	/* handle C-c */
+	signal(SIGINT, handle_sigint);
+
 	int ret;
 
 	/* Open stream(s) */
@@ -277,77 +208,10 @@ int main(int argc, char **argv){
 	if ( (ret=stream_from_getopt(&stream, argv, optind, argc, iface, "-", program_name, 0)) != 0 ) {
 		return ret; /* Error already shown */
 	}
-	const stream_stat_t* stat = stream_get_stat(stream);
 	stream_print_info(stream, stderr);
 
-	/* handle C-c */
-	signal(SIGINT, handle_sigint);
-
-	while ( keep_running ) {
-		/* A short timeout is used to allow the application to "breathe", i.e
-		 * terminate if SIGINT was received. */
-		struct timeval tv = timeout;
-
-		static int first_packet = 1;
-
-		/* Read the next packet */
-		cap_head* cp;
-		ret = stream_read(stream, &cp, &filter, &tv);
-		if ( ret == EAGAIN ){
-			if ( !first_packet ){
-				printbitrate();
-			}
-			continue; /* timeout */
-		} else if ( ret != 0 ){
-			break; /* shutdown or error */
-		}
-
-		const int payLoadSize = payloadExtraction(level, cp); //payload size
-		const qd_real current_time=(qd_real)(double)cp->ts.tv_sec+(qd_real)(double)(cp->ts.tv_psec/(double)PICODIVIDER); // extract timestamp.
-
-		if ( first_packet ) {
-			ref_time = current_time;
-			start_time = ref_time;
-			end_time = ref_time + tSample;
-			remaining_samplinginterval = end_time - start_time;
-			first_packet = 0;
-		}
-
-		while ( keep_running && (to_double(current_time) - to_double(end_time)) >= 0.0){
-			printbitrate();
-		}
-
-		// estimate transfer time of the packet
-		const qd_real transfertime_packet = (payLoadSize*8)/linkCapacity;
-		qd_real remaining_transfertime = transfertime_packet;
-		remaining_samplinginterval = end_time - current_time; //added now
-		while ( keep_running && remaining_transfertime >= remaining_samplinginterval){
-			bits += my_round(((to_double(remaining_samplinginterval))/(to_double(transfertime_packet)))*payLoadSize*8); //28 march
-			remaining_transfertime-=remaining_samplinginterval;
-			printbitrate(); // print bitrate -- dont forget to reset the remaining sampling interval in print_bitrate; set it to tSample; reset Bits;
-		}
-
-		// handle small packets or the remaining fractional packets which are in next interval
-		bits+= my_round(((to_double(remaining_transfertime))/(to_double(transfertime_packet)))*payLoadSize*8);
-		remaining_samplinginterval = end_time - current_time - transfertime_packet;
-
-		if ( max_packets > 0 && stat->matched >= max_packets) {
-			/* Read enough pkts lets break. */
-			fprintf(stderr, "%s: read enought packages\n", program_name);
-			break;
-		}
-	}
-
-	/* if ret == -1 the stream was closed properly (e.g EOF or TCP shutdown)
-	 * In addition EINTR should not give any errors because it is implied when the
-	 * user presses C-c */
-	if ( ret > 0 && ret != EINTR ){
-		fprintf(stderr, "stream_read() returned 0x%08X: %s\n", ret, caputils_error_string(ret));
-	}
-
-	/* Write stats */
-	//fprintf(stderr, "%"PRIu64" packets received.\n", stat->read);
-	//fprintf(stderr, "%"PRIu64" packets matched filter.\n", stat->matched);
+	app.reset();
+	app.process_stream(stream, &filter);
 
 	/* Release resources */
 	stream_close(stream);
