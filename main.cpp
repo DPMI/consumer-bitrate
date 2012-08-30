@@ -57,6 +57,7 @@ public:
 
 	virtual void reset(){
 		bits = 0.0;
+		Extractor::reset();
 	}
 
 protected:
