@@ -2,31 +2,16 @@
 #include "config.h"
 #endif
 
-#include "caputils/caputils.h"
-#include "caputils/stream.h"
-#include "caputils/filter.h"
-#include "caputils/utils.h"
+#include <caputils/caputils.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <inttypes.h>
-#include <time.h>
-#include <getopt.h>
-#include <errno.h>
-#include <signal.h>
-
-#include <sys/time.h>
-#include <netdb.h>
+#include <cstdio>
 #include <cstdlib>
-#include <map>
-#include <vector>
-#include <string.h>
 #include <cstring>
-#include <string>
+#include <cerrno>
+#include <csignal>
 #include <iostream>
-#include <math.h>
 #include <iomanip>
+#include <getopt.h>
 
 #include "extract.hpp"
 
