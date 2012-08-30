@@ -13,7 +13,9 @@ enum Level {
 
 enum Formatter {
 	FORMAT_DEFAULT = 500,             /* Human-readable */
-	FORMAT_CSV,                       /* CSV */
+	FORMAT_CSV,                       /* CSV (semi-colon separated) */
+	FORMAT_TSV,                       /* TSV (tab-separated) */
+	FORMAT_MATLAB,                    /* Matlab format (TSV with header) */
 };
 
 /**

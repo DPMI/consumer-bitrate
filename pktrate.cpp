@@ -29,6 +29,50 @@ static void handle_sigint(int signum){
 	keep_running = false;
 }
 
+class Output {
+public:
+	virtual void write_header(double sampleFrequency, double tSample){};
+	virtual void write_trailer(){};
+	virtual void write_sample(double t, unsigned long pkts) = 0;
+};
+
+class DefaultOutput: public Output {
+public:
+	virtual void write_header(double sampleFrequency, double tSample){
+		fprintf(stdout, "sampleFrequency: %.2fHz\n", sampleFrequency);
+		fprintf(stdout, "tSample:         %fs\n", tSample);
+		fprintf(stdout, "\n");
+		fprintf(stdout, "Time                      \t   Packets\n");
+	}
+
+	virtual void write_sample(double t, unsigned long pkts){
+		fprintf(stdout, "%.15f\t%10ld\n", t, pkts);
+	}
+};
+
+class CSVOutput: public Output {
+public:
+	CSVOutput(char delimiter, bool show_header)
+		: delimiter(delimiter)
+		, show_header(show_header){
+
+	}
+
+	virtual void write_header(double sampleFrequency, double tSample){
+		if ( show_header ){
+			fprintf(stdout, "\"Time (tSample: %f)\"%c\"Packets\"\n", tSample, delimiter);
+		}
+	}
+
+	virtual void write_sample(double t, unsigned long pkts){
+		fprintf(stdout, "%.15f%c%ld\n", t, delimiter, pkts);
+	}
+
+private:
+	char delimiter;
+	bool show_header;
+};
+
 class PacketRate: public Extractor {
 public:
 	PacketRate()
@@ -40,8 +84,10 @@ public:
 
 	virtual void set_formatter(enum Formatter format){
 		switch (format){
-		case FORMAT_DEFAULT: formatter = default_formatter; break;
-		case FORMAT_CSV: formatter = csv_formatter; break;
+		case FORMAT_DEFAULT: output = new DefaultOutput; break;
+		case FORMAT_CSV:     output = new CSVOutput(';', false); break;
+		case FORMAT_TSV:     output = new CSVOutput('\t', false); break;
+		case FORMAT_MATLAB:  output = new CSVOutput('\t', true); break;
 		}
 	}
 
@@ -51,9 +97,17 @@ public:
 	}
 
 protected:
+	virtual void write_header(int index){
+		output->write_header(sampleFrequency, to_double(tSample));
+	}
+
+	virtual void write_trailer(int index){
+		output->write_trailer();
+	}
+
 	virtual void write_sample(double t){
 		if ( show_zero || pkts > 0 ){
-			formatter(t, pkts);
+			output->write_sample(t, pkts);
 		}
 
 		pkts = 0;
@@ -66,17 +120,7 @@ protected:
 	}
 
 private:
-	typedef void(*formatter_func)(double t, unsigned long pkts);
-
-	static void default_formatter(double t, unsigned long pkts){
-		fprintf(stdout, "%.15f\t%ld\n", t, pkts);
-	}
-
-	static void csv_formatter(double t, unsigned long pkts){
-		fprintf(stdout, "%.15f;%ld\n", t, pkts);
-	}
-
-	formatter_func formatter;
+	Output* output;
 	unsigned long pkts;
 };
 
@@ -89,8 +133,10 @@ static struct option long_options[]= {
 	{"linkCapacity",     required_argument, 0, 'l'},
 	{"show-zero",        no_argument,       0, 'z'},
 	{"no-show-zero",     no_argument,       0, 'x'},
-	{"format-csv",       no_argument,       0, FORMAT_CSV},
 	{"format-default",   no_argument,       0, FORMAT_DEFAULT},
+	{"format-csv",       no_argument,       0, FORMAT_CSV},
+	{"format-tsv",       no_argument,       0, FORMAT_TSV},
+	{"format-matlab",    no_argument,       0, FORMAT_MATLAB},
 	{"viz-hack",         no_argument,       &viz_hack, 1},
 	{"help",             no_argument,       0, 'h'},
 	{0, 0, 0, 0} /* sentinel */
@@ -118,8 +164,10 @@ static void show_usage(void){
 	       "  -p, --packets=N             Stop after N packets.\n"
 	       "  -z, --show-zero             Show bitrate when zero.\n"
 	       "  -x, --no-show-zero          Don't show bitrate when zero [default]\n"
-	       "      --format-csv            Use CSV output format.\n"
 	       "      --format-default        Use default output format.\n"
+	       "      --format-csv            Use CSV output format.\n"
+	       "      --format-tsv            Use TSV output format.\n"
+	       "      --format-matlab         Use MATLAB (TSV) output format.\n"
 	       "      --viz-hack\n"
 	       "  -h, --help                  This text.\n\n");
 	filter_from_argv_usage();
@@ -148,8 +196,10 @@ int main(int argc, char **argv){
 		case '?': /* unknown opt */
 			break;
 
-		case FORMAT_CSV:
 		case FORMAT_DEFAULT:
+		case FORMAT_CSV:
+		case FORMAT_TSV:
+		case FORMAT_MATLAB:
 			app.set_formatter((enum Formatter)op);
 			break;
 

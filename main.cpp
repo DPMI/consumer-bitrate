@@ -29,6 +29,50 @@ static void handle_sigint(int signum){
 	keep_running = false;
 }
 
+class Output {
+public:
+	virtual void write_header(double sampleFrequency, double tSample){};
+	virtual void write_trailer(){};
+	virtual void write_sample(double t, double bitrate) = 0;
+};
+
+class DefaultOutput: public Output {
+public:
+	virtual void write_header(double sampleFrequency, double tSample){
+		fprintf(stdout, "sampleFrequency: %.2fHz\n", sampleFrequency);
+		fprintf(stdout, "tSample:         %fs\n", tSample);
+		fprintf(stdout, "\n");
+		fprintf(stdout, "Time                      \t   Bitrate (bps)\n");
+	}
+
+	virtual void write_sample(double t, double bitrate){
+		fprintf(stdout, "%.15f\t%.15f\n", t, bitrate);
+	}
+};
+
+class CSVOutput: public Output {
+public:
+	CSVOutput(char delimiter, bool show_header)
+		: delimiter(delimiter)
+		, show_header(show_header){
+
+	}
+
+	virtual void write_header(double sampleFrequency, double tSample){
+		if ( show_header ){
+			fprintf(stdout, "\"Time (tSample: %f)\"%c\"Bitrate (bps)\"\n", tSample, delimiter);
+		}
+	}
+
+	virtual void write_sample(double t, double bitrate){
+		fprintf(stdout, "%.15f%c%.15f\n", t, delimiter, bitrate);
+	}
+
+private:
+	char delimiter;
+	bool show_header;
+};
+
 static double my_round (double value){
 	static const double bias = 0.0005;
 	return (floor(value + bias));
@@ -45,8 +89,10 @@ public:
 
 	void set_formatter(enum Formatter format){
 		switch (format){
-		case FORMAT_DEFAULT: formatter = default_formatter; break;
-		case FORMAT_CSV: formatter = csv_formatter; break;
+		case FORMAT_DEFAULT: output = new DefaultOutput; break;
+		case FORMAT_CSV:     output = new CSVOutput(';', false); break;
+		case FORMAT_TSV:     output = new CSVOutput('\t', false); break;
+		case FORMAT_MATLAB:  output = new CSVOutput('\t', true); break;
 		}
 	}
 
@@ -56,6 +102,14 @@ public:
 	}
 
 protected:
+	virtual void write_header(int index){
+		output->write_header(sampleFrequency, to_double(tSample));
+	}
+
+	virtual void write_trailer(int index){
+		output->write_trailer();
+	}
+
 	virtual void write_sample(double t){
 		const double bitrate = my_round(bits / to_double(tSample));
 
@@ -64,7 +118,7 @@ protected:
 		}
 
 		if ( show_zero || bitrate > 0 ){
-			formatter(t, bitrate);
+			output->write_sample(t, bitrate);
 		}
 
 		bits = 0.0;
@@ -75,18 +129,7 @@ protected:
 	}
 
 private:
-	typedef void(*formatter_func)(double t, double bitrate);
-
-	static void default_formatter(double t, double bitrate){
-		std::cout << setiosflags(std::ios::fixed) << std::setprecision(15) << t << "\t" << bitrate << std::endl;
-	}
-
-	static void csv_formatter(double t, double bitrate){
-		fprintf(stdout, "%.15f;%.15f\n", t, bitrate);
-		fflush(stdout);
-	}
-
-	formatter_func formatter;
+	Output* output;
 	double bits;
 };
 
@@ -99,8 +142,10 @@ static struct option long_options[]= {
 	{"linkCapacity",     required_argument, 0, 'l'},
 	{"show-zero",        no_argument,       0, 'z'},
 	{"no-show-zero",     no_argument,       0, 'x'},
-	{"format-csv",       no_argument,       0, FORMAT_CSV},
 	{"format-default",   no_argument,       0, FORMAT_DEFAULT},
+	{"format-csv",       no_argument,       0, FORMAT_CSV},
+	{"format-tsv",       no_argument,       0, FORMAT_TSV},
+	{"format-matlab",    no_argument,       0, FORMAT_MATLAB},
 	{"relative-time",    no_argument,       0, 't'},
 	{"absolute-time",    no_argument,       0, 'T'},
 	{"viz-hack",         no_argument,       &viz_hack, 1},
@@ -130,8 +175,10 @@ static void show_usage(void){
 	       "  -p, --packets=N             Stop after N packets.\n"
 	       "  -z, --show-zero             Show bitrate when zero.\n"
 	       "  -x, --no-show-zero          Don't show bitrate when zero [default]\n"
-	       "      --format-csv            Use CSV output format.\n"
 	       "      --format-default        Use default output format.\n"
+	       "      --format-csv            Use CSV output format.\n"
+	       "      --format-tsv            Use TSV output format.\n"
+	       "      --format-matlab         Use MATLAB (TSV) output format.\n"
 	       "      --viz-hack\n"
 	       "  -t, --relative-time         Show timestamps relative to the first packet.\n"
 	       "  -T, --absolute-time         Show timestamps with absolute values (default).\n"
@@ -164,6 +211,8 @@ int main(int argc, char **argv){
 
 		case FORMAT_DEFAULT:
 		case FORMAT_CSV:
+		case FORMAT_TSV:
+		case FORMAT_MATLAB:
 			app.set_formatter((enum Formatter)op);
 			break;
 
