@@ -11,6 +11,11 @@ enum Level {
 	LEVEL_APPLICATION = 3,
 };
 
+enum Formatter {
+	FORMAT_DEFAULT = 500,             /* Human-readable */
+	FORMAT_CSV,                       /* CSV */
+};
+
 /**
  * Controls whenever the application should run or not.
  */
@@ -20,11 +25,6 @@ class Extractor {
 public:
 	Extractor();
 	virtual ~Extractor();
-
-	enum Formatter {
-		FORMAT_DEFAULT = 500,             /* Human-readable */
-		FORMAT_CSV,                       /* CSV */
-	};
 
 	/**
 	 * Force counters and accumulators to reset.

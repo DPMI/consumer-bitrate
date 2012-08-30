@@ -89,8 +89,8 @@ static struct option long_options[]= {
 	{"linkCapacity",     required_argument, 0, 'l'},
 	{"show-zero",        no_argument,       0, 'z'},
 	{"no-show-zero",     no_argument,       0, 'x'},
-	{"format-csv",       no_argument,       0, Extractor::FORMAT_CSV},
-	{"format-default",   no_argument,       0, Extractor::FORMAT_DEFAULT},
+	{"format-csv",       no_argument,       0, FORMAT_CSV},
+	{"format-default",   no_argument,       0, FORMAT_DEFAULT},
 	{"viz-hack",         no_argument,       &viz_hack, 1},
 	{"help",             no_argument,       0, 'h'},
 	{0, 0, 0, 0} /* sentinel */
@@ -148,9 +148,9 @@ int main(int argc, char **argv){
 		case '?': /* unknown opt */
 			break;
 
-		case Extractor::FORMAT_CSV:
-		case Extractor::FORMAT_DEFAULT:
-			app.set_formatter((enum PacketRate::Formatter)op);
+		case FORMAT_CSV:
+		case FORMAT_DEFAULT:
+			app.set_formatter((enum Formatter)op);
 			break;
 
 		case 'p':
