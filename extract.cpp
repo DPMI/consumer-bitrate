@@ -161,7 +161,7 @@ void Extractor::calculate_samples(const cap_head* cp){
 		first_packet = false;
 	}
 
-	while ( keep_running && (to_double(current_time) - to_double(end_time)) >= 0.0){
+	while ( keep_running && current_time >= end_time ){
 		do_sample();
 	}
 
@@ -172,7 +172,7 @@ void Extractor::calculate_samples(const cap_head* cp){
 	int packet_samples = 1;
 	remaining_transfertime = transfertime_packet;
 	remaining_samplinginterval = end_time - current_time;
-	while ( keep_running && remaining_transfertime >= remaining_samplinginterval){
+	while ( keep_running && remaining_transfertime >= remaining_samplinginterval ){
 		const qd_real fraction = to_double(remaining_samplinginterval) / to_double(transfertime_packet);
 		accumulate(fraction, packet_bits, cp, packet_samples++);
 		remaining_transfertime -= remaining_samplinginterval;
