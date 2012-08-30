@@ -1,3 +1,7 @@
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include "caputils/caputils.h"
 #include "caputils/stream.h"
 #include "caputils/filter.h"
@@ -25,8 +29,6 @@
 #include <iomanip>
 
 #include "extract.hpp"
-
-#define VERSION "1.1"
 
 static int show_zero = 0;
 static int viz_hack = 0;
