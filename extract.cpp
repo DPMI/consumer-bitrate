@@ -135,8 +135,11 @@ void Extractor::reset(){
 }
 
 void Extractor::process_stream(const stream_t st, const struct filter* filter){
+	static int index = 0;
 	const stream_stat_t* stat = stream_get_stat(st);
 	int ret;
+
+	write_header(index);
 
 	while ( keep_running && ( max_packets == 0 || stat->matched < max_packets ) ) {
 		/* A short timeout is used to allow the application to "breathe", i.e
@@ -157,6 +160,9 @@ void Extractor::process_stream(const stream_t st, const struct filter* filter){
 
 		calculate_samples(cp);
 	}
+
+	write_trailer(index);
+	index++;
 
 	/* if ret == -1 the stream was closed properly (e.g EOF or TCP shutdown)
 	 * In addition EINTR should not give any errors because it is implied when the
@@ -216,6 +222,13 @@ void Extractor::do_sample(){
 	remaining_samplinginterval = tSample;
 }
 
+void Extractor::write_header(int index){
+	/* do nothing */
+}
+
+void Extractor::write_trailer(int index){
+	/* do nothing */
+}
 
 size_t Extractor::payloadExtraction(int level, const cap_head* caphead){
 	// payload size at physical (ether+network+transport+app)

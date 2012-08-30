@@ -88,6 +88,18 @@ public:
 
 protected:
 	/**
+	 * Write header. Called before the first packet is processed.
+	 * @param index An incrementing counter (beginning at 0).
+	 */
+	virtual void write_header(int index);
+
+	/**
+	 * Write trailer. Called after the last packet is processed.
+	 * @param index An incrementing counter (beginning at 0).
+	 */
+	virtual void write_trailer(int index);
+
+	/**
 	 * Write a sample.
 	 */
 	virtual void write_sample(double t) = 0;
