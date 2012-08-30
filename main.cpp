@@ -38,20 +38,15 @@ class BitrateCalculator: public Extractor {
 public:
 	BitrateCalculator()
 		: Extractor()
-		, formatter(default_formatter)
 		, bits(0.0){
 
+		set_formatter(FORMAT_DEFAULT);
 	}
-
-	enum Formatter {
-		FMT_CSV = 500,
-		FMT_DEF
-	};
 
 	void set_formatter(enum Formatter format){
 		switch (format){
-		case FMT_CSV: formatter = csv_formatter; break;
-		case FMT_DEF: formatter = default_formatter; break;
+		case FORMAT_DEFAULT: formatter = default_formatter; break;
+		case FORMAT_CSV: formatter = csv_formatter; break;
 		}
 	}
 
@@ -104,8 +99,8 @@ static struct option long_options[]= {
 	{"linkCapacity",     required_argument, 0, 'l'},
 	{"show-zero",        no_argument,       0, 'z'},
 	{"no-show-zero",     no_argument,       0, 'x'},
-	{"format-csv",       no_argument,       0, BitrateCalculator::FMT_CSV},
-	{"format-default",   no_argument,       0, BitrateCalculator::FMT_DEF},
+	{"format-csv",       no_argument,       0, Extractor::FORMAT_CSV},
+	{"format-default",   no_argument,       0, Extractor::FORMAT_DEFAULT},
 	{"relative-time",    no_argument,       0, 't'},
 	{"absolute-time",    no_argument,       0, 'T'},
 	{"viz-hack",         no_argument,       &viz_hack, 1},
@@ -167,9 +162,9 @@ int main(int argc, char **argv){
 		case '?': /* unknown opt */
 			break;
 
-		case BitrateCalculator::FMT_CSV:
-		case BitrateCalculator::FMT_DEF:
-			app.set_formatter((enum BitrateCalculator::Formatter)op);
+		case Extractor::FORMAT_DEFAULT:
+		case Extractor::FORMAT_CSV:
+			app.set_formatter((enum Extractor::Formatter)op);
 			break;
 
 		case 'p':

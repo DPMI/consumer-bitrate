@@ -33,20 +33,15 @@ class PacketRate: public Extractor {
 public:
 	PacketRate()
 		: Extractor()
-		, formatter(default_formatter)
 		, pkts(0){
 
+		set_formatter(FORMAT_DEFAULT);
 	}
 
-	enum Formatter {
-		FMT_CSV = 500,
-		FMT_DEF
-	};
-
-	void set_formatter(enum Formatter format){
+	virtual void set_formatter(enum Formatter format){
 		switch (format){
-		case FMT_CSV: formatter = csv_formatter; break;
-		case FMT_DEF: formatter = default_formatter; break;
+		case FORMAT_DEFAULT: formatter = default_formatter; break;
+		case FORMAT_CSV: formatter = csv_formatter; break;
 		}
 	}
 
@@ -94,8 +89,8 @@ static struct option long_options[]= {
 	{"linkCapacity",     required_argument, 0, 'l'},
 	{"show-zero",        no_argument,       0, 'z'},
 	{"no-show-zero",     no_argument,       0, 'x'},
-	{"format-csv",       no_argument,       0, PacketRate::FMT_CSV},
-	{"format-default",   no_argument,       0, PacketRate::FMT_DEF},
+	{"format-csv",       no_argument,       0, Extractor::FORMAT_CSV},
+	{"format-default",   no_argument,       0, Extractor::FORMAT_DEFAULT},
 	{"viz-hack",         no_argument,       &viz_hack, 1},
 	{"help",             no_argument,       0, 'h'},
 	{0, 0, 0, 0} /* sentinel */
@@ -153,8 +148,8 @@ int main(int argc, char **argv){
 		case '?': /* unknown opt */
 			break;
 
-		case PacketRate::FMT_CSV:
-		case PacketRate::FMT_DEF:
+		case Extractor::FORMAT_CSV:
+		case Extractor::FORMAT_DEFAULT:
 			app.set_formatter((enum PacketRate::Formatter)op);
 			break;
 

@@ -21,6 +21,11 @@ public:
 	Extractor();
 	virtual ~Extractor();
 
+	enum Formatter {
+		FORMAT_DEFAULT = 500,             /* Human-readable */
+		FORMAT_CSV,                       /* CSV */
+	};
+
 	/**
 	 * Force counters and accumulators to reset.
 	 */
@@ -74,6 +79,12 @@ public:
 	 * Default is false.
 	 */
 	void set_relative_time(bool state);
+
+	/**
+	 * Set the output formatter.
+	 * If the app does not handle a specific format it should warn and set to default.
+	 */
+	virtual void set_formatter(enum Formatter format) = 0;
 
 protected:
 	/**
