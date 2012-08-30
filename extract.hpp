@@ -71,6 +71,12 @@ public:
 	 */
 	void set_link_capacity(const char* str);
 
+	/**
+	 * Use timestamps relative to the first packet.
+	 * Default is false.
+	 */
+	void set_relative_time(bool state);
+
 protected:
 	/**
 	 * Write a sample.
@@ -114,6 +120,7 @@ private:
 	void calculate_samples(const cap_head* cp);
 
 	bool first_packet;
+	bool relative_time;
 	unsigned int max_packets;
 	unsigned long link_capacity;
 	int level;

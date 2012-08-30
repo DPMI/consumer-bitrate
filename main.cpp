@@ -95,7 +95,7 @@ private:
 	double bits;
 };
 
-static const char* short_options = "p:i:q:m:l:zxh";
+static const char* short_options = "p:i:q:m:l:zxtTh";
 static struct option long_options[]= {
 	{"packets",          required_argument, 0, 'p'},
 	{"iface",            required_argument, 0, 'i'},
@@ -106,6 +106,8 @@ static struct option long_options[]= {
 	{"no-show-zero",     no_argument,       0, 'x'},
 	{"format-csv",       no_argument,       0, BitrateCalculator::FMT_CSV},
 	{"format-default",   no_argument,       0, BitrateCalculator::FMT_DEF},
+	{"relative-time",    no_argument,       0, 't'},
+	{"absolute-time",    no_argument,       0, 'T'},
 	{"viz-hack",         no_argument,       &viz_hack, 1},
 	{"help",             no_argument,       0, 'h'},
 	{0, 0, 0, 0} /* sentinel */
@@ -136,6 +138,8 @@ static void show_usage(void){
 	       "      --format-csv            Use CSV output format.\n"
 	       "      --format-default        Use default output format.\n"
 	       "      --viz-hack\n"
+	       "  -t, --relative-time         Show timestamps relative to the first packet.\n"
+	       "  -T, --absolute-time         Show timestamps with absolute values (default).\n"
 	       "  -h, --help                  This text.\n\n");
 	filter_from_argv_usage();
 }
@@ -194,6 +198,14 @@ int main(int argc, char **argv){
 
 		case 'x':
 			show_zero = 0;
+			break;
+
+		case 't': /* --relative-time */
+			app.set_relative_time(true);
+			break;
+
+		case 'T': /* --absolute-time */
+			app.set_relative_time(false);
 			break;
 
 		case 'h':

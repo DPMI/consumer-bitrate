@@ -47,6 +47,7 @@ static char pop_prefix(char* string){
 
 Extractor::Extractor()
 	: first_packet(true)
+	, relative_time(false)
 	, max_packets(0)
 	, level(0) {
 
@@ -112,6 +113,10 @@ void Extractor::set_extraction_level(const char* str){
 		fprintf(stderr, "unrecognised level arg %s \n", optarg);
 		exit(1);
 	}
+}
+
+void Extractor::set_relative_time(bool state){
+	relative_time = state;
 }
 
 void Extractor::reset(){
@@ -191,7 +196,7 @@ void Extractor::calculate_samples(const cap_head* cp){
 }
 
 void Extractor::do_sample(){
-	const double t = to_double(start_time);
+	const double t = to_double(relative_time ? (start_time - ref_time) : start_time);
 	write_sample(t);
 
 	// reset start_time ; end_time; remaining_sampling interval
