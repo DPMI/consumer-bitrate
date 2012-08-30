@@ -91,6 +91,8 @@ public:
 		}
 	}
 
+	using Extractor::set_formatter;
+
 	virtual void reset(){
 		pkts = 0;
 		Extractor::reset();
@@ -124,19 +126,15 @@ private:
 	unsigned long pkts;
 };
 
-static const char* short_options = "p:i:q:m:l:zxh";
+static const char* short_options = "p:i:q:m:f:zxh";
 static struct option long_options[]= {
 	{"packets",          required_argument, 0, 'p'},
 	{"iface",            required_argument, 0, 'i'},
 	{"level",            required_argument, 0, 'q'},
 	{"sampleFrequency",  required_argument, 0, 'm'},
-	{"linkCapacity",     required_argument, 0, 'l'},
+	{"format",           required_argument, 0, 'f'},
 	{"show-zero",        no_argument,       0, 'z'},
 	{"no-show-zero",     no_argument,       0, 'x'},
-	{"format-default",   no_argument,       0, FORMAT_DEFAULT},
-	{"format-csv",       no_argument,       0, FORMAT_CSV},
-	{"format-tsv",       no_argument,       0, FORMAT_TSV},
-	{"format-matlab",    no_argument,       0, FORMAT_MATLAB},
 	{"viz-hack",         no_argument,       &viz_hack, 1},
 	{"help",             no_argument,       0, 'h'},
 	{0, 0, 0, 0} /* sentinel */
@@ -160,16 +158,15 @@ static void show_usage(void){
 	       "                                - transport: payload at network  layer, transport + application\n"
 	       "                                - application: The payload field at transport leve , ie.application\n"
 	       "                              Default is link\n"
-	       "  -l, --linkCapacity          Link capacity in bits per second default 100 Mbps, (eg.input 100e6) \n"
 	       "  -p, --packets=N             Stop after N packets.\n"
 	       "  -z, --show-zero             Show bitrate when zero.\n"
 	       "  -x, --no-show-zero          Don't show bitrate when zero [default]\n"
-	       "      --format-default        Use default output format.\n"
-	       "      --format-csv            Use CSV output format.\n"
-	       "      --format-tsv            Use TSV output format.\n"
-	       "      --format-matlab         Use MATLAB (TSV) output format.\n"
+	       "  -f, --format=FORMAT         Set a specific output format. See below for list of supported formats.\n"
 	       "      --viz-hack\n"
 	       "  -h, --help                  This text.\n\n");
+
+
+	output_format_list();
 	filter_from_argv_usage();
 }
 
@@ -196,11 +193,8 @@ int main(int argc, char **argv){
 		case '?': /* unknown opt */
 			break;
 
-		case FORMAT_DEFAULT:
-		case FORMAT_CSV:
-		case FORMAT_TSV:
-		case FORMAT_MATLAB:
-			app.set_formatter((enum Formatter)op);
+		case 'f': /* --format */
+			app.set_formatter(optarg);
 			break;
 
 		case 'p':

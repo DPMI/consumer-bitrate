@@ -15,6 +15,16 @@
 bool keep_running = true;
 extern const char* program_name;
 
+void output_format_list(){
+	printf("Supported output formats:\n");
+	const struct formatter_entry* cur = formatter_lut;
+	while ( cur->name ){
+		printf(" * %-10s (%s)\n", cur->name, cur->desc);
+		cur++;
+	}
+	printf("\n");
+}
+
 static int prefix_to_multiplier(char prefix){
 	prefix = tolower(prefix);
 	switch ( prefix ){
@@ -118,7 +128,7 @@ static enum Level parse_level_str(const char* str){
 		cur++;
 	}
 
-	fprintf(stderr, "%s: unrecognised level \"%s\", defaulting to \"link\".\n", program_name, optarg);
+	fprintf(stderr, "%s: unrecognised level \"%s\", defaulting to \"link\".\n", program_name, str);
 	return LEVEL_LINK;
 }
 
@@ -128,6 +138,18 @@ void Extractor::set_extraction_level(const char* str){
 
 void Extractor::set_relative_time(bool state){
 	relative_time = state;
+}
+
+void Extractor::set_formatter(const char* str){
+	const struct formatter_entry* cur = formatter_lut;
+	while ( cur->name ){
+		if ( strcasecmp(cur->name, str) == 0 ){
+			return set_formatter(cur->fmt);
+		}
+		cur++;
+	}
+
+	fprintf(stderr, "%s: unrecognised formatter \"%s\", ignored.\n", program_name, str);
 }
 
 void Extractor::reset(){

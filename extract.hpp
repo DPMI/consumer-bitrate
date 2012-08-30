@@ -18,6 +18,17 @@ enum Formatter {
 	FORMAT_MATLAB,                    /* Matlab format (TSV with header) */
 };
 
+struct formatter_entry { const char* name; const char* desc; enum Formatter fmt; };
+const struct formatter_entry formatter_lut[] = {
+	{"default", "default format",       FORMAT_DEFAULT},
+	{"csv",     "semi-colon separated", FORMAT_CSV},
+	{"tsv",     "tab-separated",        FORMAT_TSV},
+	{"matlab",  "suitable for matlab",  FORMAT_MATLAB},
+	{nullptr, nullptr, (enum Formatter)0} /* sentinel */
+};
+
+void output_format_list();
+
 /**
  * Controls whenever the application should run or not.
  */
@@ -87,6 +98,7 @@ public:
 	 * If the app does not handle a specific format it should warn and set to default.
 	 */
 	virtual void set_formatter(enum Formatter format) = 0;
+	void set_formatter(const char* str);
 
 protected:
 	/**
