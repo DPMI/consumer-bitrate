@@ -16,7 +16,6 @@
 #include "extract.hpp"
 
 static int show_zero = 0;
-static int viz_hack = 0;
 static const char* iface = NULL;
 const char* program_name = NULL;
 
@@ -126,7 +125,7 @@ private:
 	unsigned long pkts;
 };
 
-static const char* short_options = "p:i:q:m:f:zxh";
+static const char* short_options = "p:i:q:m:f:zxtTh";
 static struct option long_options[]= {
 	{"packets",          required_argument, 0, 'p'},
 	{"iface",            required_argument, 0, 'i'},
@@ -135,7 +134,8 @@ static struct option long_options[]= {
 	{"format",           required_argument, 0, 'f'},
 	{"show-zero",        no_argument,       0, 'z'},
 	{"no-show-zero",     no_argument,       0, 'x'},
-	{"viz-hack",         no_argument,       &viz_hack, 1},
+	{"relative-time",    no_argument,       0, 't'},
+	{"absolute-time",    no_argument,       0, 'T'},
 	{"help",             no_argument,       0, 'h'},
 	{0, 0, 0, 0} /* sentinel */
 };
@@ -162,7 +162,8 @@ static void show_usage(void){
 	       "  -z, --show-zero             Show bitrate when zero.\n"
 	       "  -x, --no-show-zero          Don't show bitrate when zero [default]\n"
 	       "  -f, --format=FORMAT         Set a specific output format. See below for list of supported formats.\n"
-	       "      --viz-hack\n"
+	       "  -t, --relative-time         Show timestamps relative to the first packet.\n"
+	       "  -T, --absolute-time         Show timestamps with absolute values (default).\n"
 	       "  -h, --help                  This text.\n\n");
 
 
@@ -223,6 +224,14 @@ int main(int argc, char **argv){
 
 		case 'x':
 			show_zero = 0;
+			break;
+
+		case 't': /* --relative-time */
+			app.set_relative_time(true);
+			break;
+
+		case 'T': /* --absolute-time */
+			app.set_relative_time(false);
 			break;
 
 		case 'h':
