@@ -142,9 +142,7 @@ static struct option long_options[]= {
 
 static void show_usage(void){
 	printf("%s-" VERSION " (libcap_utils-%s)\n", program_name, caputils_version(NULL));
-	printf("(C) 2004 Patrik Arlos <patrik.arlos@bth.se>\n");
 	printf("(C) 2012 David Sveningsson <david.sveningsson@bth.se>\n");
-	printf("(C) 2012 Vamsi krishna Konakalla <vkk@bth.se>\n\n");
 	printf("Usage: %s [OPTIONS] STREAM\n", program_name);
 	printf("  -i, --iface                 For ethernet-based streams, this is the interface to listen\n"
 	       "                              on. For other streams it is ignored.\n"
