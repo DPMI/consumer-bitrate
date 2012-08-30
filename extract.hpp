@@ -34,6 +34,11 @@ void output_format_list();
  */
 extern bool keep_running;
 
+/**
+ * This class reads packets, splits them into time-based interval, and calls
+ * Extractor::accumulate. To calculate bitrate simply add the number of bits
+ * until a sample is ready.
+ */
 class Extractor {
 public:
 	Extractor();
