@@ -29,21 +29,16 @@ static void handle_sigint(int signum){
 	keep_running = false;
 }
 
-static double my_round (double value){
-	static const double bias = 0.0005;
-	return (floor(value + bias));
-}
-
-class BitrateCalculator: public Extractor {
+class PacketRate: public Extractor {
 public:
-	BitrateCalculator()
+	PacketRate()
 		: Extractor()
-		, bits(0.0){
+		, pkts(0){
 
 		set_formatter(FORMAT_DEFAULT);
 	}
 
-	void set_formatter(enum Formatter format){
+	virtual void set_formatter(enum Formatter format){
 		switch (format){
 		case FORMAT_DEFAULT: formatter = default_formatter; break;
 		case FORMAT_CSV: formatter = csv_formatter; break;
@@ -51,46 +46,41 @@ public:
 	}
 
 	virtual void reset(){
-		bits = 0.0;
+		pkts = 0;
 		Extractor::reset();
 	}
 
 protected:
 	virtual void write_sample(double t){
-		const double bitrate = my_round(bits / to_double(tSample));
-
-		if ( viz_hack ){
-			t *= sampleFrequency;
+		if ( show_zero || pkts > 0 ){
+			formatter(t, pkts);
 		}
 
-		if ( show_zero || bitrate > 0 ){
-			formatter(t, bitrate);
-		}
-
-		bits = 0.0;
+		pkts = 0;
 	}
 
 	virtual void accumulate(qd_real fraction, unsigned long packet_bits, const cap_head* cp, int counter){
-		bits += my_round(to_double(fraction) * packet_bits);
+		if ( counter == 1 ){
+			pkts += 1;
+		}
 	}
 
 private:
-	typedef void(*formatter_func)(double t, double bitrate);
+	typedef void(*formatter_func)(double t, unsigned long pkts);
 
-	static void default_formatter(double t, double bitrate){
-		std::cout << setiosflags(std::ios::fixed) << std::setprecision(15) << t << "\t" << bitrate << std::endl;
+	static void default_formatter(double t, unsigned long pkts){
+		fprintf(stdout, "%.15f\t%ld\n", t, pkts);
 	}
 
-	static void csv_formatter(double t, double bitrate){
-		fprintf(stdout, "%.15f;%.15f\n", t, bitrate);
-		fflush(stdout);
+	static void csv_formatter(double t, unsigned long pkts){
+		fprintf(stdout, "%.15f;%ld\n", t, pkts);
 	}
 
 	formatter_func formatter;
-	double bits;
+	unsigned long pkts;
 };
 
-static const char* short_options = "p:i:q:m:l:zxtTh";
+static const char* short_options = "p:i:q:m:l:zxh";
 static struct option long_options[]= {
 	{"packets",          required_argument, 0, 'p'},
 	{"iface",            required_argument, 0, 'i'},
@@ -101,8 +91,6 @@ static struct option long_options[]= {
 	{"no-show-zero",     no_argument,       0, 'x'},
 	{"format-csv",       no_argument,       0, Extractor::FORMAT_CSV},
 	{"format-default",   no_argument,       0, Extractor::FORMAT_DEFAULT},
-	{"relative-time",    no_argument,       0, 't'},
-	{"absolute-time",    no_argument,       0, 'T'},
 	{"viz-hack",         no_argument,       &viz_hack, 1},
 	{"help",             no_argument,       0, 'h'},
 	{0, 0, 0, 0} /* sentinel */
@@ -117,15 +105,15 @@ static void show_usage(void){
 	printf("  -i, --iface                 For ethernet-based streams, this is the interface to listen\n"
 	       "                              on. For other streams it is ignored.\n"
 	       "  -m, --sampleFrequency       Sampling frequency in Hz. Valid prefixes are 'k', 'm' and 'g'.\n"
-	       "  -q, --level                 Level to calculate bitrate.\n"
-	       "                              At level N, payload of particular layer is only considered, use filters to select particular streams.\n"
+	       "  -q, --level 		            Level to calculate bitrate {physical (default), link, network, transport and application}\n"
+	       "                              At level N , payload of particular layer is only considered, use filters to select particular streams.\n"
 	       "                              To calculate the bitrate at physical , use physical layer, Consider for Network layer use [-q network]\n"
 	       "                              It shall contain transport protocol header + payload\n"
 	       "                                - link: all bits captured at physical level, i.e link + network + transport + application\n"
 	       "                                - network: payload field at link layer , network + transport + application\n"
 	       "                                - transport: payload at network  layer, transport + application\n"
 	       "                                - application: The payload field at transport leve , ie.application\n"
-	       "                              Default is link.\n"
+	       "                              Default is link\n"
 	       "  -l, --linkCapacity          Link capacity in bits per second default 100 Mbps, (eg.input 100e6) \n"
 	       "  -p, --packets=N             Stop after N packets.\n"
 	       "  -z, --show-zero             Show bitrate when zero.\n"
@@ -133,8 +121,6 @@ static void show_usage(void){
 	       "      --format-csv            Use CSV output format.\n"
 	       "      --format-default        Use default output format.\n"
 	       "      --viz-hack\n"
-	       "  -t, --relative-time         Show timestamps relative to the first packet.\n"
-	       "  -T, --absolute-time         Show timestamps with absolute values (default).\n"
 	       "  -h, --help                  This text.\n\n");
 	filter_from_argv_usage();
 }
@@ -153,7 +139,7 @@ int main(int argc, char **argv){
 		return 0; /* error already shown */
 	}
 
-	BitrateCalculator app;
+	PacketRate app;
 
 	int op, option_index = -1;
 	while ( (op = getopt_long(argc, argv, short_options, long_options, &option_index)) != -1 ){
@@ -162,9 +148,9 @@ int main(int argc, char **argv){
 		case '?': /* unknown opt */
 			break;
 
-		case Extractor::FORMAT_DEFAULT:
 		case Extractor::FORMAT_CSV:
-			app.set_formatter((enum Extractor::Formatter)op);
+		case Extractor::FORMAT_DEFAULT:
+			app.set_formatter((enum PacketRate::Formatter)op);
 			break;
 
 		case 'p':
@@ -193,14 +179,6 @@ int main(int argc, char **argv){
 
 		case 'x':
 			show_zero = 0;
-			break;
-
-		case 't': /* --relative-time */
-			app.set_relative_time(true);
-			break;
-
-		case 'T': /* --absolute-time */
-			app.set_relative_time(false);
 			break;
 
 		case 'h':
