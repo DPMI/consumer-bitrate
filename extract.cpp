@@ -150,9 +150,14 @@ void Extractor::process_stream(const stream_t st, const struct filter* filter){
 	}
 }
 
+qd_real Extractor::estimate_transfertime(unsigned long bits){
+	return qd_real((double)bits) / link_capacity;
+}
+
 void Extractor::calculate_samples(const cap_head* cp){
-	const qd_real current_time=(qd_real)(double)cp->ts.tv_sec+(qd_real)(double)(cp->ts.tv_psec/(double)PICODIVIDER); // extract timestamp.
 	const unsigned long packet_bits = payloadExtraction(level, cp) * 8;
+	const qd_real current_time = qd_real((double)cp->ts.tv_sec) + qd_real((double)cp->ts.tv_psec/PICODIVIDER);
+	const qd_real transfertime_packet = estimate_transfertime(packet_bits);
 
 	if ( first_packet ) {
 		ref_time = current_time;
@@ -165,12 +170,9 @@ void Extractor::calculate_samples(const cap_head* cp){
 		do_sample();
 	}
 
-	// estimate transfer time of the packet
-	transfertime_packet = (double)packet_bits / link_capacity;
-
 	/* split large packets into multiple samples */
 	int packet_samples = 1;
-	remaining_transfertime = transfertime_packet;
+	qd_real remaining_transfertime = transfertime_packet;
 	remaining_samplinginterval = end_time - current_time;
 	while ( keep_running && remaining_transfertime >= remaining_samplinginterval ){
 		const qd_real fraction = to_double(remaining_samplinginterval) / to_double(transfertime_packet);

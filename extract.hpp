@@ -80,7 +80,8 @@ protected:
 	/**
 	 * Accumulate value from packet.
 	 *
-	 * @param bits Total number of bits in packet.
+	 * @param fraction The fraction (0-1) of the packet this sample should contain.
+	 * @param bits Total number of bits in packet, extracted at requested level.
 	 * @param cp Packet header.
 	 * @param counter Number of times this packet has been sampled.
 	 */
@@ -97,12 +98,15 @@ protected:
 	 */
 	size_t payloadExtraction(int level, const cap_head* caphead);
 
+	/**
+	 * Estimate how long it takes (in seconds) to N bits over the current link speed.
+	 */
+	qd_real estimate_transfertime(unsigned long bits);
+
 	qd_real ref_time;
 	qd_real start_time;
 	qd_real end_time;
 	qd_real remaining_samplinginterval;
-	qd_real remaining_transfertime;
-	qd_real transfertime_packet;
 	double sampleFrequency;
 	qd_real tSample;
 
