@@ -5,12 +5,10 @@
 #include <qd/qd_real.h>
 
 enum Level {
-	LEVEL_INVALID     = -1,
-	LEVEL_PHYSICAL    = 0,
-	LEVEL_LINK        = 1,
-	LEVEL_NETWORK     = 2,
-	LEVEL_TRANSPORT   = 3,
-	LEVEL_APPLICATION = 4,
+	LEVEL_LINK        = 0,
+	LEVEL_NETWORK     = 1,
+	LEVEL_TRANSPORT   = 2,
+	LEVEL_APPLICATION = 3,
 };
 
 /**

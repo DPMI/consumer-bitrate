@@ -49,7 +49,7 @@ Extractor::Extractor()
 	: first_packet(true)
 	, relative_time(false)
 	, max_packets(0)
-	, level(0) {
+	, level(LEVEL_LINK) {
 
 	set_sampling_frequency(1.0); /* default to 1Hz */
 	set_link_capacity("100m");   /* default to 100mbps */
@@ -100,19 +100,30 @@ void Extractor::set_link_capacity(const char* str){
 	free(tmp);
 }
 
-void Extractor::set_extraction_level(const char* str){
-	if (strcmp (optarg, "link") == 0)
-		level = 0;
-	else if ( strcmp (optarg, "network" ) == 0)
-		level = 1;
-	else if (strcmp (optarg ,"transport") == 0)
-		level = 2;
-	else if (strcmp (optarg , "application") == 0)
-		level = 3;
-	else {
-		fprintf(stderr, "unrecognised level arg %s \n", optarg);
-		exit(1);
+static enum Level parse_level_str(const char* str){
+	struct entry { const char* name; enum Level level; };
+	static const struct entry lut[] = {
+		{"link",        LEVEL_LINK},
+		{"network",     LEVEL_NETWORK},
+		{"transport",   LEVEL_TRANSPORT},
+		{"application", LEVEL_APPLICATION},
+		{0, (enum Level)0} /* sentinel */
+	};
+
+	const struct entry* cur = lut;
+	while ( cur->name ){
+		if ( strcasecmp(cur->name, str) == 0 ){
+			return cur->level;
+		}
+		cur++;
 	}
+
+	fprintf(stderr, "%s: unrecognised level \"%s\", defaulting to \"link\".\n", program_name, optarg);
+	return LEVEL_LINK;
+}
+
+void Extractor::set_extraction_level(const char* str){
+	level = parse_level_str(str);
 }
 
 void Extractor::set_relative_time(bool state){
@@ -208,12 +219,12 @@ void Extractor::do_sample(){
 
 size_t Extractor::payloadExtraction(int level, const cap_head* caphead){
 	// payload size at physical (ether+network+transport+app)
-	if ( level == LEVEL_PHYSICAL ) {
+	if ( level == LEVEL_LINK ) {
 		return caphead->len;
 	};
 
 	// payload size at link  (network+transport+app)
-	if ( level == LEVEL_LINK ) {
+	if ( level == LEVEL_NETWORK ) {
 		return caphead->len - sizeof(struct ethhdr);
 	};
 
@@ -229,18 +240,18 @@ size_t Extractor::payloadExtraction(int level, const cap_head* caphead){
 	ipv4:
 
 		// payload size at network  (transport+app)
-		if ( level == LEVEL_NETWORK ) {
+		if ( level == LEVEL_TRANSPORT ) {
 			return ntohs(ip_hdr->ip_len)-4*ip_hdr->ip_hl;
 		};
 
 		switch(ip_hdr->ip_p) { /* Test what transport protocol is present */
 		case IPPROTO_TCP: /* TCP */
 			tcp = (struct tcphdr*)(caphead->payload + sizeof(cap_header) + sizeof(struct ethhdr) + vlan_offset + 4*ip_hdr->ip_hl);
-			if( level == LEVEL_TRANSPORT ) return ntohs(ip_hdr->ip_len)-4*tcp->doff-4*ip_hdr->ip_hl;  // payload size at transport  (app)
+			if( level == LEVEL_APPLICATION ) return ntohs(ip_hdr->ip_len)-4*tcp->doff-4*ip_hdr->ip_hl;  // payload size at transport  (app)
 			break;
 		case IPPROTO_UDP: /* UDP */
 			udp = (struct udphdr*)(caphead->payload + sizeof(cap_header) + sizeof(struct ethhdr) + vlan_offset + 4*ip_hdr->ip_hl);
-			if( level == LEVEL_TRANSPORT ) return ntohs(udp->len)-8;                     // payload size at transport  (app)
+			if( level == LEVEL_APPLICATION ) return ntohs(udp->len)-8;                     // payload size at transport  (app)
 			break;
 		default:
 			fprintf(stderr, "Unknown IP transport protocol: %d\n", ip_hdr->ip_p);
