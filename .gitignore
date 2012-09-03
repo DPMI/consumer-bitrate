@@ -1,6 +1,16 @@
+# build files
+*.o
 bitrate
 pktrate
+timescale
+.deps
+
+# emacs
+*~
+\#*\#
+.\#*
+
+# misc
 core
 *.cap
 *.pcap
-.deps
