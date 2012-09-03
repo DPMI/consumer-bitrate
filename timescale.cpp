@@ -256,10 +256,9 @@ private:
 	double bits;
 };
 
-static const char* short_options = "p:i:q:m:f:t:n:h";
+static const char* short_options = "p:q:m:f:t:n:h";
 static struct option long_options[]= {
 	{"packets",          required_argument, 0, 'p'},
-	{"iface",            required_argument, 0, 'i'},
 	{"level",            required_argument, 0, 'q'},
 	{"sampleFrequency",  required_argument, 0, 'm'},
 	{"format",           required_argument, 0, 'f'},
@@ -273,9 +272,7 @@ static void show_usage(void){
 	printf("%s-" VERSION " (libcap_utils-%s)\n", program_name, caputils_version(NULL));
 	printf("(C) 2012 David Sveningsson <david.sveningsson@bth.se>\n");
 	printf("Usage: %s [OPTIONS] STREAM\n", program_name);
-	printf("  -i, --iface                 For ethernet-based streams, this is the interface to listen\n"
-	       "                              on. For other streams it is ignored.\n"
-	       "  -m, --sampleFrequency       Sampling frequency in Hz. Valid prefixes are 'k', 'm' and 'g'.\n"
+	printf("  -m, --sampleFrequency       Sampling frequency in Hz. Valid prefixes are 'k', 'm' and 'g'.\n"
 	       "  -q, --level 		            Level to calculate bitrate {physical (default), link, network, transport and application}\n"
 	       "                              At level N , payload of particular layer is only considered, use filters to select particular streams.\n"
 	       "                              To calculate the bitrate at physical , use physical layer, Consider for Network layer use [-q network]\n"
@@ -366,15 +363,25 @@ int main(int argc, char **argv){
 
 	/* Open stream(s) */
 	stream_t stream;
-	if ( (ret=stream_from_getopt(&stream, argv, optind, argc, iface, "-", program_name, 0)) != 0 ) {
-		return ret; /* Error already shown */
+	stream_addr_t addr;
+	for ( int i = optind; i < argc; i++ ){
+		if ( !keep_running ) break;
+		const char* filename = argv[i];
+
+		stream_addr_str(&addr, filename, 0);
+		if ( (ret=stream_open(&stream, &addr, nullptr, 0)) != 0 ) {
+			fprintf(stderr, "%s: stream_open() failed with code 0x%08X: %s\n", program_name, ret, caputils_error_string(ret));
+			continue;
+		}
+
+		app.reset();
+		app.process_stream(stream, &filter);
+
+		stream_close(stream);
+		stream = nullptr;
 	}
 
-	app.reset();
-	app.process_stream(stream, &filter);
-
 	/* Release resources */
-	stream_close(stream);
 	filter_close(&filter);
 
 	return 0;
