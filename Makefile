@@ -1,15 +1,16 @@
 DESTDIR=/
 PREFIX=$(DESTDIR)/usr/local
 DEPDIR=.deps
+LIBS = $(shell pkg-config libcap_utils-0.7 libcap_filter-0.7 conserver-0.7 --libs) -lqd
 bin_PROGRAMS = bitrate pktrate
 
 all: $(bin_PROGRAMS)
 
 bitrate: main.o extract.o
-	$(CXX) $(LDFLAGS) $^ $(shell pkg-config libcap_utils-0.7 libcap_filter-0.7 conserver-0.7 --libs) -lqd -o $@
+	$(CXX) $(LDFLAGS) $^ $(LIBS) -o $@
 
 pktrate: pktrate.o extract.o
-	$(CXX) $(LDFLAGS) $^ $(shell pkg-config libcap_utils-0.7 libcap_filter-0.7 conserver-0.7 --libs) -lqd -o $@
+	$(CXX) $(LDFLAGS) $^ $(LIBS) -o $@
 
 clean:
 	rm -rf *.o $(bin_PROGRAMS) $(DEPDIR)
