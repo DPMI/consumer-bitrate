@@ -23,5 +23,6 @@ $(DEPDIR):
 
 install: all
 	install -m 0755 bitrate $(PREFIX)/bin
+	install -m 0755 pktrate $(PREFIX)/bin
 
 -include $(wildcard $(DEPDIR)/*.d)
