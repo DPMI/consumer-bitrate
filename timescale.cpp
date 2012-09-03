@@ -191,12 +191,18 @@ class Timescale: public Extractor {
 public:
 	Timescale()
 		: Extractor()
+		, output(nullptr)
 		, num_moments(3)
 		, timescale(10)
 		, bin(nullptr)
 		, bits(0.0) {
 
 		set_formatter(FORMAT_DEFAULT);
+	}
+
+	virtual ~Timescale(){
+		delete bin;
+		delete output;
 	}
 
 	void set_timescale(int timescale){
@@ -208,6 +214,7 @@ public:
 	}
 
 	virtual void set_formatter(enum Formatter format){
+		delete output;
 		switch (format){
 		  case FORMAT_DEFAULT: output = new DefaultOutput; break;
 		  case FORMAT_CSV:     output = new CSVOutput(';', false); break;
