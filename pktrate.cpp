@@ -247,7 +247,7 @@ int main(int argc, char **argv){
 	int ret;
 
 	/* Open stream(s) */
-	struct stream* stream;
+	stream_t stream;
 	if ( (ret=stream_from_getopt(&stream, argv, optind, argc, iface, "-", program_name, 0)) != 0 ) {
 		return ret; /* Error already shown */
 	}
