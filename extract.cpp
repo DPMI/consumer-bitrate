@@ -183,8 +183,10 @@ void Extractor::process_stream(const stream_t st, const struct filter* filter){
 		calculate_samples(cp);
 	}
 
-	write_trailer(index);
-	index++;
+	/* only write trailer if app isn't terminating */
+	if ( keep_running ){
+		write_trailer(index++);
+	}
 
 	/* if ret == -1 the stream was closed properly (e.g EOF or TCP shutdown)
 	 * In addition EINTR should not give any errors because it is implied when the
