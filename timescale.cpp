@@ -314,6 +314,7 @@ int main(int argc, char **argv){
 	}
 
 	Timescale app;
+	app.set_ignore_marker(true);
 
 	int op, option_index = -1;
 	while ( (op = getopt_long(argc, argv, short_options, long_options, &option_index)) != -1 ){

@@ -61,6 +61,11 @@ public:
 	void stop();
 
 	/**
+	 * Ignore the initial marker packet.
+	 */
+	void set_ignore_marker(bool state);
+
+	/**
 	 * Set sampling frequency in Hz.
 	 */
 	void set_sampling_frequency(double hz);
@@ -159,6 +164,7 @@ protected:
 private:
 	void calculate_samples(const cap_head* cp);
 
+	bool ignore_marker;
 	bool first_packet;
 	bool relative_time;
 	unsigned int max_packets;

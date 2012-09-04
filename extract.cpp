@@ -12,6 +12,9 @@
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
 
+/* the caputils/marker.h header wasn't c++ compatible so I include the declaration here instead */
+extern "C" int is_marker(const struct cap_header* cp, struct marker* ptr, int port);
+
 bool keep_running = true;
 extern const char* program_name;
 
@@ -56,7 +59,8 @@ static char pop_prefix(char* string){
 }
 
 Extractor::Extractor()
-	: first_packet(true)
+	: ignore_marker(false)
+	, first_packet(true)
 	, relative_time(false)
 	, max_packets(0)
 	, level(LEVEL_LINK) {
@@ -67,6 +71,10 @@ Extractor::Extractor()
 
 Extractor::~Extractor(){
 
+}
+
+void Extractor::set_ignore_marker(bool state){
+	ignore_marker = state;
 }
 
 void Extractor::set_sampling_frequency(double hz){
@@ -206,6 +214,10 @@ void Extractor::calculate_samples(const cap_head* cp){
 	const qd_real transfertime_packet = estimate_transfertime(packet_bits);
 
 	if ( first_packet ) {
+		if ( ignore_marker && is_marker(cp, nullptr, 0) ){
+			return;
+		}
+
 		ref_time = current_time;
 		start_time = ref_time;
 		end_time = ref_time + tSample;
