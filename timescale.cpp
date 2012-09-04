@@ -170,7 +170,7 @@ public:
 			for ( int i = 0; i < num_moments; i++ ){
 				fprintf(stdout, "%c\"M%d\"", delimiter, i+1);
 			}
-			fprintf(stdout, "\n");
+			fprintf(stdout, "%c\"Samples\"\n", delimiter);
 		}
 
 		bin->recursive_visit([&](const Bin* cur){
