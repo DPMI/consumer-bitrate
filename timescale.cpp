@@ -228,14 +228,19 @@ public:
 	virtual void reset(){
 		Extractor::reset();
 
-		delete bin;
-		bin = new Bin(0, timescale, num_moments);
-		bits = 0.0;
+		if ( !bin ){
+			bin = new Bin(0, timescale, num_moments);
+			bits = 0.0;
+		}
+	}
+
+	void write_summary(){
+		output->write_output(bin, timescale, num_moments, sampleFrequency, to_double(tSample));
 	}
 
 protected:
 	virtual void write_trailer(int index){
-		output->write_output(bin, timescale, num_moments, sampleFrequency, to_double(tSample));
+
 	}
 
 	virtual void write_sample(double t){
@@ -369,6 +374,7 @@ int main(int argc, char **argv){
 	for ( int i = optind; i < argc; i++ ){
 		if ( !keep_running ) break;
 		const char* filename = argv[i];
+		fprintf(stderr, "%s: processing `%s'\n", program_name, filename);
 
 		stream_addr_str(&addr, filename, 0);
 		if ( (ret=stream_open(&stream, &addr, nullptr, 0)) != 0 ) {
@@ -382,6 +388,8 @@ int main(int argc, char **argv){
 		stream_close(stream);
 		stream = nullptr;
 	}
+
+	app.write_summary();
 
 	/* Release resources */
 	filter_close(&filter);
