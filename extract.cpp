@@ -208,13 +208,35 @@ qd_real Extractor::estimate_transfertime(unsigned long bits){
 	return qd_real((double)bits) / link_capacity;
 }
 
+bool Extractor::valid_first_packet(const cap_head* cp){
+	if ( !ignore_marker ) return true;
+
+	/* ignore marker packets */
+	if ( is_marker(cp, nullptr, 0) ){
+		return false;
+	}
+
+	/* ignore initial ICMP packets which is a response to the marker packet being
+	   undeliverable */
+	const struct ethhdr* ethhdr = cp->ethhdr;
+	const struct ip* ip = find_ip_header(ethhdr);
+	if ( ip && ip->ip_p == IPPROTO_ICMP ){
+		const struct icmphdr* icmp = (const struct icmphdr*)((char*)ip + 4*ip->ip_hl);
+		if ( icmp->type == ICMP_DEST_UNREACH && icmp->code == ICMP_PORT_UNREACH ){
+			return false;
+		}
+	}
+
+	return true;
+}
+
 void Extractor::calculate_samples(const cap_head* cp){
 	const unsigned long packet_bits = payloadExtraction(level, cp) * 8;
 	const qd_real current_time = qd_real((double)cp->ts.tv_sec) + qd_real((double)cp->ts.tv_psec/PICODIVIDER);
 	const qd_real transfertime_packet = estimate_transfertime(packet_bits);
 
 	if ( first_packet ) {
-		if ( ignore_marker && is_marker(cp, nullptr, 0) ){
+		if ( !valid_first_packet(cp) ){
 			return;
 		}
 

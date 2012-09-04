@@ -163,6 +163,7 @@ protected:
 
 private:
 	void calculate_samples(const cap_head* cp);
+	bool valid_first_packet(const cap_head* cp);
 
 	bool ignore_marker;
 	bool first_packet;
