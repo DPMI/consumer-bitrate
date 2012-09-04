@@ -133,14 +133,14 @@ public:
 		for ( int i = 0; i < num_moments; i++ ){
 			fprintf(stdout, "%*s%d ", width[i], "M", i+1);
 		}
-		fputc('\n', stdout);
+		fprintf(stdout, " Samples\n");
 
 		bin->recursive_visit([&](const Bin* cur){
 			fprintf(stdout, "%-8g ", pow((double)cur->timescale, (double)cur->level) * tSample);
 			for ( int i = 0; i < num_moments; i++ ){
 				fprintf(stdout, "%*g ", width[i]+1, cur->accumulator[i] / cur->counter);
 			}
-			fputc('\n', stdout);
+			fprintf(stdout, " %d\n", cur->counter);
 		});
 	}
 
@@ -174,11 +174,11 @@ public:
 		}
 
 		bin->recursive_visit([&](const Bin* cur){
-			printf("%f", pow((double)cur->timescale, (double)cur->level) * tSample);
+			fprintf(stdout, "%f", pow((double)cur->timescale, (double)cur->level) * tSample);
 			for ( int i = 0; i < num_moments; i++ ){
-				printf("%c%f", delimiter, cur->accumulator[i] / cur->counter);
+				fprintf(stdout, "%c%f", delimiter, cur->accumulator[i] / cur->counter);
 			}
-			putchar('\n');
+			fprintf(stdout, "%c%d\n", delimiter, cur->counter);
 		});
 	};
 
