@@ -129,14 +129,14 @@ public:
 		fprintf(stdout, "timescale:       %d\n", timescale);
 		fprintf(stdout, "\n");
 
-		fprintf(stdout, "Tscale ");
+		fprintf(stdout, "Tscale   ");
 		for ( int i = 0; i < num_moments; i++ ){
 			fprintf(stdout, "%*s%d ", width[i], "M", i+1);
 		}
 		fputc('\n', stdout);
 
 		bin->recursive_visit([&](const Bin* cur){
-			fprintf(stdout, "%-6d ", (int)pow((double)cur->timescale, (double)cur->level));
+			fprintf(stdout, "%-8g ", pow((double)cur->timescale, (double)cur->level) * tSample);
 			for ( int i = 0; i < num_moments; i++ ){
 				fprintf(stdout, "%*g ", width[i]+1, cur->accumulator[i] / cur->counter);
 			}
@@ -174,7 +174,7 @@ public:
 		}
 
 		bin->recursive_visit([&](const Bin* cur){
-			printf("%d", (int)pow((double)cur->timescale, (double)cur->level));
+			printf("%f", pow((double)cur->timescale, (double)cur->level) * tSample);
 			for ( int i = 0; i < num_moments; i++ ){
 				printf("%c%f", delimiter, cur->accumulator[i] / cur->counter);
 			}
