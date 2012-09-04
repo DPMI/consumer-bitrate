@@ -367,6 +367,11 @@ int main(int argc, char **argv){
 	/* handle C-c */
 	signal(SIGINT, handle_sigint);
 
+	if ( optind == argc ){
+		fprintf(stderr, "%s: no input files, see -h for usage.\n", program_name);
+		exit(1);
+	}
+
 	int ret;
 
 	/* Open stream(s) */
