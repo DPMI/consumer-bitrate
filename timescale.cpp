@@ -256,11 +256,12 @@ private:
 	double bits;
 };
 
-static const char* short_options = "p:q:m:f:t:n:h";
+static const char* short_options = "p:q:m:l:f:t:n:h";
 static struct option long_options[]= {
 	{"packets",          required_argument, 0, 'p'},
 	{"level",            required_argument, 0, 'q'},
 	{"sampleFrequency",  required_argument, 0, 'm'},
+	{"linkCapacity",     required_argument, 0, 'l'},
 	{"format",           required_argument, 0, 'f'},
 	{"timescale",        required_argument, 0, 't'},
 	{"moments",          required_argument, 0, 'n'},
@@ -282,6 +283,7 @@ static void show_usage(void){
 	       "                                - transport: payload at network  layer, transport + application\n"
 	       "                                - application: The payload field at transport leve , ie.application\n"
 	       "                              Default is link\n"
+	       "  -l, --linkCapacity          Link capacity in bits per second default 100 Mbps, (eg.input 100e6) \n"
 	       "  -p, --packets=N             Stop after N packets.\n"
 	       "  -f, --format=FORMAT         Set a specific output format. See below for list of supported formats.\n"
 	       "  -t, --timescale=SCALE       Set timescale [default: 10].\n"
