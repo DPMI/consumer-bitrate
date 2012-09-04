@@ -167,7 +167,7 @@ void Extractor::reset(){
 void Extractor::process_stream(const stream_t st, const struct filter* filter){
 	static int index = 0;
 	const stream_stat_t* stat = stream_get_stat(st);
-	int ret;
+	int ret = 0;
 
 	write_header(index);
 
