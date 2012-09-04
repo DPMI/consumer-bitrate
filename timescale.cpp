@@ -400,5 +400,5 @@ int main(int argc, char **argv){
 	/* Release resources */
 	filter_close(&filter);
 
-	return 0;
+	return keep_running ? 0 : 1;
 }
