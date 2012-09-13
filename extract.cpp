@@ -268,6 +268,7 @@ void Extractor::calculate_samples(const cap_head* cp){
 	const qd_real fraction = remaining_transfertime / transfertime_packet;
 	accumulate(fraction, packet_bits, cp, packet_samples++);
 	remaining_samplinginterval = end_time - current_time - transfertime_packet;
+	do_sample();
 }
 
 void Extractor::do_sample(){
