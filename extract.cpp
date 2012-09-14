@@ -191,6 +191,9 @@ void Extractor::process_stream(const stream_t st, const struct filter* filter){
 		calculate_samples(cp);
 	}
 
+	/* push the final sample */
+	do_sample();
+
 	/* only write trailer if app isn't terminating */
 	if ( keep_running ){
 		write_trailer(index++);
@@ -268,7 +271,6 @@ void Extractor::calculate_samples(const cap_head* cp){
 	const qd_real fraction = remaining_transfertime / transfertime_packet;
 	accumulate(fraction, packet_bits, cp, packet_samples++);
 	remaining_samplinginterval = end_time - current_time - transfertime_packet;
-	do_sample();
 }
 
 void Extractor::do_sample(){
