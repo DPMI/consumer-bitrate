@@ -162,6 +162,7 @@ void Extractor::set_formatter(const char* str){
 
 void Extractor::reset(){
 	first_packet = true;
+	counter = 1;
 }
 
 void Extractor::process_stream(const stream_t st, const struct filter* filter){
@@ -278,7 +279,7 @@ void Extractor::do_sample(){
 	write_sample(t);
 
 	// reset start_time ; end_time; remaining_sampling interval
-	start_time = end_time;
+	start_time = ref_time + counter++ * tSample;
 	end_time = start_time + tSample;
 	remaining_samplinginterval = tSample;
 }

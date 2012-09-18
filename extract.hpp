@@ -160,6 +160,7 @@ protected:
 	qd_real remaining_samplinginterval;
 	double sampleFrequency;
 	qd_real tSample;
+	int counter;
 
 private:
 	void calculate_samples(const cap_head* cp);
