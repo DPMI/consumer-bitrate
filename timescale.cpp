@@ -9,12 +9,14 @@
 #include <cstring>
 #include <cerrno>
 #include <csignal>
+#include <cinttypes>
 #include <getopt.h>
 #include <functional>
 
 #include "extract.hpp"
 
 static const char* iface = NULL;
+static const stream_stat* stat = NULL;
 const char* program_name = NULL;
 
 static void handle_sigint(int signum){
@@ -25,6 +27,11 @@ static void handle_sigint(int signum){
 	fprintf(stderr, "\rAborting capture.\n");
 	keep_running = false;
 }
+
+static void show_stats(int signum){
+	if ( !stat ) return;
+	fprintf(stderr, "%s:  %'"PRIu64" packets has been read.\n", program_name, stat->read);
+};
 
 static double my_round (double value){
 	static const double bias = 0.0005;
@@ -366,6 +373,7 @@ int main(int argc, char **argv){
 
 	/* handle C-c */
 	signal(SIGINT, handle_sigint);
+	signal(SIGUSR1, show_stats);
 
 	if ( optind == argc ){
 		fprintf(stderr, "%s: no input files, see -h for usage.\n", program_name);
@@ -387,6 +395,7 @@ int main(int argc, char **argv){
 			fprintf(stderr, "%s: stream_open() failed with code 0x%08X: %s\n", program_name, ret, caputils_error_string(ret));
 			continue;
 		}
+		stat = stream_get_stat(stream);
 
 		app.reset();
 		app.process_stream(stream, &filter);
