@@ -38,6 +38,15 @@ static double my_round (double value){
 	return (floor(value + bias));
 }
 
+static double fastpow(double x, int y){
+	switch ( y ){
+	case 1: return x;
+	case 2: return x*x;
+	case 3: return x*x*x;
+	default: return pow(x, (double)y);
+	}
+}
+
 class Bin {
 public:
 	Bin(int level, int timescale, int moments, Bin* next = nullptr)
@@ -69,7 +78,7 @@ public:
 	 */
 	void feed(double value){
 		for ( int i = 0; i < num_moments; i++ ){
-			accumulator[i] += pow(value, (double)(i+1));
+			accumulator[i] += fastpow(value, i+1);
 		}
 
 		if ( ++counter % timescale == 0 ){
