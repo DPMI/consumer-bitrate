@@ -397,7 +397,6 @@ int main(int argc, char **argv){
 	for ( int i = optind; i < argc; i++ ){
 		if ( !keep_running ) break;
 		const char* filename = argv[i];
-		fprintf(stderr, "%s: processing `%s'\n", program_name, filename);
 
 		stream_addr_str(&addr, filename, 0);
 		if ( (ret=stream_open(&stream, &addr, nullptr, 0)) != 0 ) {
