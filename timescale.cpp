@@ -190,7 +190,7 @@ public:
 		}
 
 		bin->recursive_visit([&](const Bin* cur){
-			fprintf(stdout, "%f", pow((double)cur->timescale, (double)cur->level) * tSample);
+			fprintf(stdout, "%g", pow((double)cur->timescale, (double)cur->level) * tSample);
 			for ( int i = 0; i < num_moments; i++ ){
 				fprintf(stdout, "%c%f", delimiter, cur->accumulator[i] / cur->counter);
 			}
