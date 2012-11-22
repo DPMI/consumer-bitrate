@@ -90,7 +90,7 @@ public:
 	 * Called when enough datapoints was gathered.
 	 */
 	void sample(){
-		const double mean = (accumulator[0] - previous) / timescale;
+		const double mean = to_double((accumulator[0] - previous) / timescale);
 		previous = accumulator[0];
 
 		if ( !next ){
