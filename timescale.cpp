@@ -67,7 +67,7 @@ public:
 	}
 
 	void setup_accumulator(){
-		accumulator = new double[num_moments];
+		accumulator = new qd_real[num_moments];
 		for ( int i = 0; i < num_moments; i++ ){
 			accumulator[i] = 0.0;
 		}
@@ -122,8 +122,8 @@ private:
 	const int level;
 	const int timescale;
 	const int num_moments;
-	double* accumulator;
-	double previous;
+	qd_real* accumulator;
+	qd_real previous;
 	int counter;
 };
 
@@ -154,7 +154,7 @@ public:
 		bin->recursive_visit([&](const Bin* cur){
 			fprintf(stdout, "%-8g ", pow((double)cur->timescale, (double)cur->level) * tSample);
 			for ( int i = 0; i < num_moments; i++ ){
-				fprintf(stdout, "%*g ", width[i]+1, cur->accumulator[i] / cur->counter);
+				fprintf(stdout, "%*g ", width[i]+1, to_double(cur->accumulator[i] / cur->counter));
 			}
 			fprintf(stdout, " %d\n", cur->counter);
 		});
@@ -165,7 +165,7 @@ private:
 		size_t max = 0;
 		char buf[64];
 		bin->recursive_visit([&](const Bin* cur){
-			size_t width = snprintf(buf, sizeof(buf), "%g", cur->accumulator[index] / cur->counter);
+			size_t width = snprintf(buf, sizeof(buf), "%g", to_double(cur->accumulator[index] / cur->counter));
 			max = width > max ? width : max;
 		});
 		return max;
@@ -192,7 +192,7 @@ public:
 		bin->recursive_visit([&](const Bin* cur){
 			fprintf(stdout, "%g", pow((double)cur->timescale, (double)cur->level) * tSample);
 			for ( int i = 0; i < num_moments; i++ ){
-				fprintf(stdout, "%c%f", delimiter, cur->accumulator[i] / cur->counter);
+				fprintf(stdout, "%c%f", delimiter, to_double(cur->accumulator[i] / cur->counter));
 			}
 			fprintf(stdout, "%c%d\n", delimiter, cur->counter);
 		});
