@@ -6,7 +6,7 @@ bin_PROGRAMS = bitrate pktrate timescale
 
 all: $(bin_PROGRAMS)
 
-bitrate: main.o extract.o
+bitrate: bitrate.o extract.o
 	$(CXX) $(LDFLAGS) $^ $(LIBS) -o $@
 
 pktrate: pktrate.o extract.o
