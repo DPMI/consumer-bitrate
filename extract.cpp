@@ -119,30 +119,12 @@ void Extractor::set_link_capacity(const char* str){
 	free(tmp);
 }
 
-static enum Level parse_level_str(const char* str){
-	struct entry { const char* name; enum Level level; };
-	static const struct entry lut[] = {
-		{"link",        LEVEL_LINK},
-		{"network",     LEVEL_NETWORK},
-		{"transport",   LEVEL_TRANSPORT},
-		{"application", LEVEL_APPLICATION},
-		{0, (enum Level)0} /* sentinel */
-	};
-
-	const struct entry* cur = lut;
-	while ( cur->name ){
-		if ( strcasecmp(cur->name, str) == 0 ){
-			return cur->level;
-		}
-		cur++;
-	}
-
-	fprintf(stderr, "%s: unrecognised level \"%s\", defaulting to \"link\".\n", program_name, str);
-	return LEVEL_LINK;
-}
-
 void Extractor::set_extraction_level(const char* str){
-	level = parse_level_str(str);
+	level = level_from_string(str);
+	if ( level == LEVEL_INVALID ){
+		fprintf(stderr, "%s: unrecognised level \"%s\", defaulting to \"link\".\n", program_name, str);
+		level = LEVEL_LINK;
+	}
 }
 
 void Extractor::set_relative_time(bool state){
@@ -236,7 +218,7 @@ bool Extractor::valid_first_packet(const cap_head* cp){
 }
 
 void Extractor::calculate_samples(const cap_head* cp){
-	const unsigned long packet_bits = payloadExtraction(level, cp) * 8;
+	const unsigned long packet_bits = layer_size(level, cp) * 8;
 	const qd_real current_time = qd_real((double)cp->ts.tv_sec) + qd_real((double)cp->ts.tv_psec/PICODIVIDER);
 	const qd_real transfertime_packet = estimate_transfertime(packet_bits);
 
@@ -291,76 +273,4 @@ void Extractor::write_header(int index){
 
 void Extractor::write_trailer(int index){
 	/* do nothing */
-}
-
-size_t Extractor::payloadExtraction(int level, const cap_head* caphead){
-	// payload size at physical (ether+network+transport+app)
-	if ( level == LEVEL_LINK ) {
-		return caphead->len;
-	};
-
-	// payload size at link  (network+transport+app)
-	if ( level == LEVEL_NETWORK ) {
-		return caphead->len - sizeof(struct ethhdr);
-	};
-
-	const struct ethhdr *ether = caphead->ethhdr;
-	const struct ip* ip_hdr = NULL;
-	struct tcphdr* tcp = NULL;
-	struct udphdr* udp = NULL;
-	size_t vlan_offset = 0;
-
-	switch(ntohs(ether->h_proto)) {
-	case ETHERTYPE_IP:/* Packet contains an IP, PASS TWO! */
-		ip_hdr = (struct ip*)(caphead->payload + sizeof(cap_header) + sizeof(struct ethhdr));
-	ipv4:
-
-		// payload size at network  (transport+app)
-		if ( level == LEVEL_TRANSPORT ) {
-			return ntohs(ip_hdr->ip_len)-4*ip_hdr->ip_hl;
-		};
-
-		switch(ip_hdr->ip_p) { /* Test what transport protocol is present */
-		case IPPROTO_TCP: /* TCP */
-			tcp = (struct tcphdr*)(caphead->payload + sizeof(cap_header) + sizeof(struct ethhdr) + vlan_offset + 4*ip_hdr->ip_hl);
-			if( level == LEVEL_APPLICATION ) return ntohs(ip_hdr->ip_len)-4*tcp->doff-4*ip_hdr->ip_hl;  // payload size at transport  (app)
-			break;
-		case IPPROTO_UDP: /* UDP */
-			udp = (struct udphdr*)(caphead->payload + sizeof(cap_header) + sizeof(struct ethhdr) + vlan_offset + 4*ip_hdr->ip_hl);
-			if( level == LEVEL_APPLICATION ) return ntohs(udp->len)-8;                     // payload size at transport  (app)
-			break;
-		default:
-			fprintf(stderr, "Unknown IP transport protocol: %d\n", ip_hdr->ip_p);
-			return 0; /* there is no way to know the actual payload size here */
-		}
-		break;
-
-	case ETHERTYPE_VLAN:
-		ip_hdr = (struct ip*)(caphead->payload + sizeof(cap_header) + sizeof(struct ether_vlan_header));
-		vlan_offset = 4;
-		goto ipv4;
-
-	case ETHERTYPE_IPV6:
-		fprintf(stderr, "IPv6 not handled, ignored\n");
-		return 0;
-
-	case ETHERTYPE_ARP:
-		fprintf(stderr, "ARP not handled, ignored\n");
-		return 0;
-
-	case STPBRIDGES:
-		fprintf(stderr, "STP not handled, ignored\n");
-		return 0;
-
-	case CDPVTP:
-		fprintf(stderr, "CDPVTP not handled, ignored\n");
-		return 0;
-
-	default:      /* Packet contains unknown link . */
-		fprintf(stderr, "Unknown ETHERTYPE 0x%0x \n", ntohs(ether->h_proto));
-		return 0; /* there is no way to know the actual payload size here, a zero will ignore it in the calculation */
-	}
-
-	fprintf(stderr, "packet wasn't handled by payLoadExtraction, ignored\n");
-	return 0;
 }

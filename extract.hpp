@@ -2,6 +2,7 @@
 #define EXTRACT_H
 
 #include <caputils/caputils.h>
+#include <caputils/packet.h>
 #include <qd/qd_real.h>
 
 enum Formatter {
@@ -137,12 +138,6 @@ protected:
 	void do_sample();
 
 	/**
-	 * Extracts the number of bytes at specified level.
-	 * @return size in bytes.
-	 */
-	size_t payloadExtraction(int level, const cap_head* caphead);
-
-	/**
 	 * Estimate how long it takes (in seconds) to N bits over the current link speed.
 	 */
 	qd_real estimate_transfertime(unsigned long bits);
@@ -164,7 +159,7 @@ private:
 	bool relative_time;
 	unsigned int max_packets;
 	unsigned long link_capacity;
-	int level;
+	enum Level level;
 };
 
 #endif /* EXTRACT_H */
