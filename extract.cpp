@@ -3,6 +3,7 @@
 #endif
 
 #include "extract.hpp"
+#include <caputils/packet.h>
 
 #include <cstdlib>
 #include <cstring>
@@ -165,7 +166,7 @@ void Extractor::reset(){
 	counter = 1;
 }
 
-void Extractor::process_stream(const stream_t st, const struct filter* filter){
+void Extractor::process_stream(const stream_t st, struct filter* filter){
 	static int index = 0;
 	const stream_stat_t* stat = stream_get_stat(st);
 	int ret = 0;
@@ -223,7 +224,7 @@ bool Extractor::valid_first_packet(const cap_head* cp){
 	/* ignore initial ICMP packets which is a response to the marker packet being
 	   undeliverable */
 	const struct ethhdr* ethhdr = cp->ethhdr;
-	const struct ip* ip = find_ip_header(ethhdr);
+	const struct ip* ip = find_ipv4_header(ethhdr, nullptr);
 	if ( ip && ip->ip_p == IPPROTO_ICMP ){
 		const struct icmphdr* icmp = (const struct icmphdr*)((char*)ip + 4*ip->ip_hl);
 		if ( icmp->type == ICMP_DEST_UNREACH && icmp->code == ICMP_PORT_UNREACH ){

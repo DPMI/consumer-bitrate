@@ -4,13 +4,6 @@
 #include <caputils/caputils.h>
 #include <qd/qd_real.h>
 
-enum Level {
-	LEVEL_LINK        = 0,
-	LEVEL_NETWORK     = 1,
-	LEVEL_TRANSPORT   = 2,
-	LEVEL_APPLICATION = 3,
-};
-
 enum Formatter {
 	FORMAT_DEFAULT = 500,             /* Human-readable */
 	FORMAT_CSV,                       /* CSV (semi-colon separated) */
@@ -52,7 +45,7 @@ public:
 	/**
 	 * Process packets in stream.
 	 */
-	void process_stream(const stream_t st, const struct filter* filter);
+	void process_stream(const stream_t st, struct filter* filter);
 
 	/**
 	 * Stop processing packets.
