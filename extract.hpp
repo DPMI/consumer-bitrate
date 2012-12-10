@@ -2,14 +2,8 @@
 #define EXTRACT_H
 
 #include <caputils/caputils.h>
+#include <caputils/packet.h>
 #include <qd/qd_real.h>
-
-enum Level {
-	LEVEL_LINK        = 0,
-	LEVEL_NETWORK     = 1,
-	LEVEL_TRANSPORT   = 2,
-	LEVEL_APPLICATION = 3,
-};
 
 enum Formatter {
 	FORMAT_DEFAULT = 500,             /* Human-readable */
@@ -52,7 +46,7 @@ public:
 	/**
 	 * Process packets in stream.
 	 */
-	void process_stream(const stream_t st, const struct filter* filter);
+	void process_stream(const stream_t st, struct filter* filter);
 
 	/**
 	 * Stop processing packets.
@@ -144,12 +138,6 @@ protected:
 	void do_sample();
 
 	/**
-	 * Extracts the number of bytes at specified level.
-	 * @return size in bytes.
-	 */
-	size_t payloadExtraction(int level, const cap_head* caphead);
-
-	/**
 	 * Estimate how long it takes (in seconds) to N bits over the current link speed.
 	 */
 	qd_real estimate_transfertime(unsigned long bits);
@@ -171,7 +159,7 @@ private:
 	bool relative_time;
 	unsigned int max_packets;
 	unsigned long link_capacity;
-	int level;
+	enum Level level;
 };
 
 #endif /* EXTRACT_H */
