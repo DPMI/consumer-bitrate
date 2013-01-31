@@ -1,8 +1,9 @@
 DESTDIR=/
 PREFIX=$(DESTDIR)/usr/local
 DEPDIR=.deps
-LIBS = $(shell pkg-config libcap_utils-0.7 --libs --atleast-version=0.7.14) -lqd
-bin_PROGRAMS = bitrate pktrate timescale
+LIBS = $(shell pkg-config libcap_utils-0.7 libcap_filter-0.7 --libs) -lqd
+bin_PROGRAMS = bitrate pktrate timescale wavelet
+
 
 all: $(bin_PROGRAMS)
 
@@ -14,6 +15,10 @@ pktrate: pktrate.o extract.o
 
 timescale: timescale.o extract.o
 	$(CXX) $(LDFLAGS) $^ $(LIBS) -o $@
+
+wavelet: wavelet.o extract.o
+	$(CXX) $(LDFLAGS) $^ $(LIBS) -o $@
+
 
 clean:
 	rm -rf *.o $(bin_PROGRAMS) $(DEPDIR)
@@ -28,5 +33,6 @@ install: all
 	install -m 0755 bitrate $(PREFIX)/bin
 	install -m 0755 pktrate $(PREFIX)/bin
 	install -m 0755 timescale $(PREFIX)/bin
+	install -m 0755 wavelet $(PREFIX)/bin
 
 -include $(wildcard $(DEPDIR)/*.d)
