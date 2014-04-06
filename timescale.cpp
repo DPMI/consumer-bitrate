@@ -129,6 +129,7 @@ private:
 
 class Output {
 public:
+	virtual ~Output(){}
 	virtual void write_output(const Bin* bin, int timescale, int num_moments, double sampleFrequency, double tSample) = 0;
 };
 
