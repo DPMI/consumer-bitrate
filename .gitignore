@@ -3,6 +3,7 @@
 bitrate
 pktrate
 timescale
+wavelet
 .deps
 
 # emacs
