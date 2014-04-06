@@ -30,7 +30,7 @@ static void handle_sigint(int signum){
 
 static void show_stats(int signum){
 	if ( !stat ) return;
-	fprintf(stderr, "%s:  %'"PRIu64" packets has been read.\n", program_name, stat->read);
+	fprintf(stderr, "%s:  %'" PRIu64 " packets has been read.\n", program_name, stat->read);
 };
 
 static double my_round (double value){
