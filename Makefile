@@ -1,7 +1,7 @@
 DESTDIR=/
 PREFIX=$(DESTDIR)/usr/local
 DEPDIR=.deps
-LIBS = $(shell pkg-config libcap_utils-0.7 libcap_filter-0.7 --libs) -lqd
+LIBS = $(shell pkg-config libcap_utils-0.7 libcap_filter-0.7 --libs) -lqd -lcurl
 bin_PROGRAMS = bitrate pktrate timescale wavelet
 .PHONY: clean env-check
 

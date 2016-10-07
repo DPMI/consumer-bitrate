@@ -10,6 +10,7 @@ enum Formatter {
 	FORMAT_CSV,                       /* CSV (semi-colon separated) */
 	FORMAT_TSV,                       /* TSV (tab-separated) */
 	FORMAT_MATLAB,                    /* Matlab format (TSV with header) */
+	FORMAT_INFLUX,                    /* InFluxDB, url + credentials needed */
 };
 
 struct formatter_entry { const char* name; const char* desc; enum Formatter fmt; };
@@ -18,6 +19,8 @@ const struct formatter_entry formatter_lut[] = {
 	{"csv",     "semi-colon separated", FORMAT_CSV},
 	{"tsv",     "tab-separated",        FORMAT_TSV},
 	{"matlab",  "suitable for matlab",  FORMAT_MATLAB},
+	{"influx",  "suitable for influxdb",  FORMAT_INFLUX},
+
 	{nullptr, nullptr, (enum Formatter)0} /* sentinel */
 };
 
@@ -150,6 +153,7 @@ protected:
 	qd_real tSample;
 	int counter;
 
+
 private:
 	void calculate_samples(const cap_head* cp);
 	bool valid_first_packet(const cap_head* cp);
@@ -160,6 +164,7 @@ private:
 	unsigned int max_packets;
 	unsigned long link_capacity;
 	enum Level level;
+
 };
 
 #endif /* EXTRACT_H */
