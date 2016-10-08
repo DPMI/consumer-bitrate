@@ -4,6 +4,11 @@
 
 #include "http.hpp"
 
+static size_t write_chunk(void* buffer, size_t size, size_t nmemb, void* userp){
+	/* do nothing */
+	return size * nmemb;
+}
+
 HTTPOutput::HTTPOutput(const char* url, const char* user, const char* pass)
 	: curl(nullptr) {
 
@@ -23,19 +28,24 @@ HTTPOutput::~HTTPOutput(){
 	}
 }
 
-void HTTPOutput::POST(const char* data){
+int HTTPOutput::POST(const char* data){
 	if ( !curl ){
 		fprintf(stdout, "POST %s\n", data);
-		return;
+		return 200;
 	}
 
 	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
-	CURLcode res = curl_easy_perform(curl);
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_chunk);
+	const CURLcode res = curl_easy_perform(curl);
 
-	/* Check for errors */
-	if(res != CURLE_OK){
+	/* check for errors */
+	if ( res != CURLE_OK ){
 		fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-	} else {
-		fprintf(stderr, "curl OK\n");
+		return 500;
 	}
+
+	/* return HTTP status code */
+	long response;
+	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response);
+	return response;
 }

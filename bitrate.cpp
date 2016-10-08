@@ -25,6 +25,10 @@ const char* cURL = "http://localhost:8086/write?db=testdb";
 const char* cURL_user = "miffo";
 const char* cURL_pwd = "konko";
 
+enum {
+	HTTP_CREATED = 204,
+};
+
 static void handle_sigint(int signum){
 	if ( !keep_running ){
 		fprintf(stderr, "\rGot SIGINT again, terminating.\n");
@@ -92,7 +96,10 @@ public:
 
 		fprintf(stderr, "curl string: %s \n",str);
 
-		http.POST(str);
+		const int status = http.POST(str);
+		if ( status != HTTP_CREATED ){
+			fprintf(stderr, "influx returned HTTP %d\n", status);
+		}
 	}
 
 protected:

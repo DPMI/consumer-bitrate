@@ -11,8 +11,11 @@ public:
 
 	/**
 	 * Perform a HTTP POST request with the provided data as body.
+	 *
+	 * @param data POST body
+	 * @return HTTP status code
 	 */
-	void POST(const char* data);
+	int POST(const char* data);
 
 protected:
 	CURL* curl;
