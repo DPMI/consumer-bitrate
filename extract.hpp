@@ -15,11 +15,11 @@ enum Formatter {
 
 struct formatter_entry { const char* name; const char* desc; enum Formatter fmt; };
 const struct formatter_entry formatter_lut[] = {
-	{"default", "default format",       FORMAT_DEFAULT},
-	{"csv",     "semi-colon separated", FORMAT_CSV},
-	{"tsv",     "tab-separated",        FORMAT_TSV},
-	{"matlab",  "suitable for matlab",  FORMAT_MATLAB},
-	{"influx",  "suitable for influxdb",  FORMAT_INFLUX},
+	{"default", "default format",        FORMAT_DEFAULT},
+	{"csv",     "semi-colon separated",  FORMAT_CSV},
+	{"tsv",     "tab-separated",         FORMAT_TSV},
+	{"matlab",  "suitable for matlab",   FORMAT_MATLAB},
+	{"influx",  "suitable for influxdb", FORMAT_INFLUX},
 
 	{nullptr, nullptr, (enum Formatter)0} /* sentinel */
 };

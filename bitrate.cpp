@@ -25,8 +25,6 @@ const char* cURL = "http://localhost:8086/write?db=testdb";
 const char* cURL_user = "miffo";
 const char* cURL_pwd = "konko";
 
-
-
 static void handle_sigint(int signum){
 	if ( !keep_running ){
 		fprintf(stderr, "\rGot SIGINT again, terminating.\n");
@@ -81,69 +79,63 @@ private:
 };
 
 class InfluxOutput: public Output {
-public: 
-        InfluxOutput(char delimiter, bool show_header)
-	  : delimiter(delimiter)
-	  , show_header(show_header){
-	  
-	}
-  
-        virtual void wirte_header(double sampleFrequency, double tSample){
-	  /* Not applicable */
-	}
-  
-        virtual void write_sample(double t, double bitrate){
-	  CURL *curl;
-	  CURLcode res;
-	  
-	  /* Initialize Connection */
-	  curl_global_init(CURL_GLOBAL_ALL);
-	  curl = curl_easy_init();
-	  if (curl){
-	    curl_easy_setopt(curl, CURLOPT_URL, cURL);
-	    curl_easy_setopt(curl, CURLOPT_USERNAME,cURL_user);
-	    curl_easy_setopt(curl, CURLOPT_PASSWORD,cURL_pwd);
-	  } else {
-	    fprintf(stdout, "Influx, but to stdout.\n");
-	  }
-	  
-	  
-	  fprintf(stdout, "Influx: formatting data.\n");
-	  char str[1500];
-	  sprintf(str,"bitrate,mpid=%s value=%g %llu",mpid,bitrate,(long long int) (t*1e9));
-	  
-	  fprintf(stderr, "curl string: %s \n",str);
-	  
-	  if (curl){
-	      curl_easy_setopt(curl, CURLOPT_POSTFIELDS, str);
-	      res = curl_easy_perform(curl);
-	      /* Check for errors */
-	      if(res != CURLE_OK){
-		fprintf(stderr, "curl_easy_perform() failed: %s\n",curl_easy_strerror(res));
-	      } else {
-		fprintf(stderr, "curl OK\n");
-	      }
+public:
+	InfluxOutput(char delimiter, bool show_header)
+		: delimiter(delimiter)
+		, show_header(show_header){
 
-	    } else {
-	      fprintf(stdout, "Response: %s",str);
-	    }
-	  
-	  if(curl){
-	    curl_easy_cleanup(curl);
-	    curl_global_cleanup();
-	  }
+	}
 
+	virtual void wirte_header(double sampleFrequency, double tSample){
+		/* Not applicable */
+	}
+
+	virtual void write_sample(double t, double bitrate){
+		CURL *curl;
+		CURLcode res;
+
+		/* Initialize Connection */
+		curl_global_init(CURL_GLOBAL_ALL);
+		curl = curl_easy_init();
+		if (curl){
+			curl_easy_setopt(curl, CURLOPT_URL, cURL);
+			curl_easy_setopt(curl, CURLOPT_USERNAME,cURL_user);
+			curl_easy_setopt(curl, CURLOPT_PASSWORD,cURL_pwd);
+		} else {
+			fprintf(stdout, "Influx, but to stdout.\n");
+		}
+
+		fprintf(stdout, "Influx: formatting data.\n");
+		char str[1500];
+		sprintf(str,"bitrate,mpid=%s value=%g %llu",mpid,bitrate,(long long int) (t*1e9));
+
+		fprintf(stderr, "curl string: %s \n",str);
+
+		if (curl){
+			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, str);
+			res = curl_easy_perform(curl);
+			/* Check for errors */
+			if(res != CURLE_OK){
+				fprintf(stderr, "curl_easy_perform() failed: %s\n",curl_easy_strerror(res));
+			} else {
+				fprintf(stderr, "curl OK\n");
+			}
+
+		} else {
+			fprintf(stdout, "Response: %s",str);
+		}
+
+		if(curl){
+			curl_easy_cleanup(curl);
+			curl_global_cleanup();
+		}
 	}
 
 private:
 
-  char delimiter;
-  bool show_header;
+	char delimiter;
+	bool show_header;
 };
-
-
-
-
 
 static double my_round (double value){
 	static const double bias = 0.0005;
@@ -165,7 +157,7 @@ public:
 		case FORMAT_CSV:     output = new CSVOutput(';', false); break;
 		case FORMAT_TSV:     output = new CSVOutput('\t', false); break;
 		case FORMAT_MATLAB:  output = new CSVOutput('\t', true); break;
-		case FORMAT_INFLUX: output = new InfluxOutput('\t', true); break;
+		case FORMAT_INFLUX:  output = new InfluxOutput('\t', true); break;
 		}
 	}
 
@@ -327,20 +319,21 @@ int main(int argc, char **argv){
 		case 'T': /* --absolute-time */
 			app.set_relative_time(false);
 			break;
-			
+
 		case 'u': /* --influx-url */
-  		        cURL = optarg;
+			cURL = optarg;
 			break;
 
 		case 'U': /* --influx-user */
-  		        cURL_user = optarg;
+			cURL_user = optarg;
 			break;
 
 		case 'P': /* --influx-pwd */
-  		        cURL_pwd = optarg;
+			cURL_pwd = optarg;
 			break;
+
 		case 'Q': /* --influx-mpid */
-		        mpid = optarg;
+			mpid = optarg;
 			break;
 
 		case 'h':
