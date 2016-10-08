@@ -7,7 +7,7 @@ bin_PROGRAMS = bitrate pktrate timescale wavelet
 
 all: $(bin_PROGRAMS) env-check
 
-bitrate: bitrate.o extract.o
+bitrate: bitrate.o extract.o http.o
 	$(CXX) $(LDFLAGS) $^ $(LIBS) -o $@
 
 pktrate: pktrate.o extract.o

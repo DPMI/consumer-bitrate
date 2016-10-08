@@ -12,9 +12,9 @@
 #include <iostream>
 #include <iomanip>
 #include <getopt.h>
-#include <curl/curl.h>
 
 #include "extract.hpp"
+#include "http.hpp"
 
 static int show_zero = 0;
 static int viz_hack = 0;
@@ -80,61 +80,23 @@ private:
 
 class InfluxOutput: public Output {
 public:
-	InfluxOutput(char delimiter, bool show_header)
-		: delimiter(delimiter)
-		, show_header(show_header){
+	InfluxOutput(const char* url, const char* user, const char* pass)
+		: http(url, user, pass) {
 
-	}
-
-	virtual void wirte_header(double sampleFrequency, double tSample){
-		/* Not applicable */
 	}
 
 	virtual void write_sample(double t, double bitrate){
-		CURL *curl;
-		CURLcode res;
-
-		/* Initialize Connection */
-		curl_global_init(CURL_GLOBAL_ALL);
-		curl = curl_easy_init();
-		if (curl){
-			curl_easy_setopt(curl, CURLOPT_URL, cURL);
-			curl_easy_setopt(curl, CURLOPT_USERNAME,cURL_user);
-			curl_easy_setopt(curl, CURLOPT_PASSWORD,cURL_pwd);
-		} else {
-			fprintf(stdout, "Influx, but to stdout.\n");
-		}
-
 		fprintf(stdout, "Influx: formatting data.\n");
 		char str[1500];
 		sprintf(str,"bitrate,mpid=%s value=%g %llu",mpid,bitrate,(long long int) (t*1e9));
 
 		fprintf(stderr, "curl string: %s \n",str);
 
-		if (curl){
-			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, str);
-			res = curl_easy_perform(curl);
-			/* Check for errors */
-			if(res != CURLE_OK){
-				fprintf(stderr, "curl_easy_perform() failed: %s\n",curl_easy_strerror(res));
-			} else {
-				fprintf(stderr, "curl OK\n");
-			}
-
-		} else {
-			fprintf(stdout, "Response: %s",str);
-		}
-
-		if(curl){
-			curl_easy_cleanup(curl);
-			curl_global_cleanup();
-		}
+		http.POST(str);
 	}
 
-private:
-
-	char delimiter;
-	bool show_header;
+protected:
+	HTTPOutput http;
 };
 
 static double my_round (double value){
@@ -157,7 +119,7 @@ public:
 		case FORMAT_CSV:     output = new CSVOutput(';', false); break;
 		case FORMAT_TSV:     output = new CSVOutput('\t', false); break;
 		case FORMAT_MATLAB:  output = new CSVOutput('\t', true); break;
-		case FORMAT_INFLUX:  output = new InfluxOutput('\t', true); break;
+		case FORMAT_INFLUX:  output = new InfluxOutput(cURL, cURL_user, cURL_pwd); break;
 		}
 	}
 
@@ -272,6 +234,7 @@ int main(int argc, char **argv){
 	}
 
 	BitrateCalculator app;
+	char* format = nullptr;
 
 	int op, option_index = -1;
 	while ( (op = getopt_long(argc, argv, short_options, long_options, &option_index)) != -1 ){
@@ -281,7 +244,9 @@ int main(int argc, char **argv){
 			break;
 
 		case 'f': /* --format */
-			app.set_formatter(optarg);
+			/* format initialization is deferred until all args has been
+			 * consumed */
+			format = strdup(optarg);
 			break;
 
 		case 'p':
@@ -343,6 +308,12 @@ int main(int argc, char **argv){
 		default:
 			fprintf (stderr, "%s: ?? getopt returned character code 0%o ??\n", program_name, op);
 		}
+	}
+
+	/* load output format */
+	if ( format ){
+		app.set_formatter(format);
+		free(format);
 	}
 
 	/* handle C-c */
