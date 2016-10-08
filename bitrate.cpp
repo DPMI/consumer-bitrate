@@ -21,9 +21,9 @@ static int viz_hack = 0;
 static const char* iface = NULL;
 static char* influx_mpid = nullptr;
 const char* program_name = NULL;
-const char* cURL = "http://localhost:8086/write?db=testdb";
-const char* cURL_user = "miffo";
-const char* cURL_pwd = "konko";
+static const char* influx_url = "http://localhost:8086/write?db=testdb";
+static const char* influx_user = "miffo";
+static const char* influx_pwd = "konko";
 
 enum {
 	HTTP_CREATED = 204,
@@ -90,11 +90,10 @@ public:
 	}
 
 	virtual void write_sample(double t, double bitrate){
-		fprintf(stdout, "Influx: formatting data.\n");
-		char str[1500];
-		sprintf(str,"bitrate,mpid=%s value=%g %llu",influx_mpid,bitrate,(long long int) (t*1e9));
+		static char str[1500];
 
-		fprintf(stderr, "curl string: %s \n",str);
+		sprintf(str, "bitrate,mpid=%s value=%g %llu",
+		        influx_mpid, bitrate, (long long int)(t*1e9));
 
 		const int status = http.POST(str);
 		if ( status != HTTP_CREATED ){
@@ -131,7 +130,7 @@ public:
 		case FORMAT_CSV:     output = new CSVOutput(';', false); break;
 		case FORMAT_TSV:     output = new CSVOutput('\t', false); break;
 		case FORMAT_MATLAB:  output = new CSVOutput('\t', true); break;
-		case FORMAT_INFLUX:  output = new InfluxOutput(cURL, cURL_user, cURL_pwd); break;
+		case FORMAT_INFLUX:  output = new InfluxOutput(influx_url, influx_user, influx_pwd); break;
 		}
 	}
 
@@ -295,15 +294,15 @@ int main(int argc, char **argv){
 			break;
 
 		case 'u': /* --influx-url */
-			cURL = optarg;
+			influx_url = optarg;
 			break;
 
 		case 'U': /* --influx-user */
-			cURL_user = optarg;
+			influx_user = optarg;
 			break;
 
 		case 'P': /* --influx-pwd */
-			cURL_pwd = optarg;
+			influx_pwd = optarg;
 			break;
 
 		case 'h':
