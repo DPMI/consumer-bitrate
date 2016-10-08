@@ -144,6 +144,10 @@ void Extractor::set_formatter(const char* str){
 	fprintf(stderr, "%s: unrecognised formatter \"%s\", ignored.\n", program_name, str);
 }
 
+void Extractor::set_mpid(const mampid_t mpid){
+
+}
+
 void Extractor::reset(){
 	first_packet = true;
 	counter = 1;
@@ -173,7 +177,7 @@ void Extractor::process_stream(const stream_t st, struct filter* filter){
 			break; /* shutdown or error */
 		}
 
-		//		strncpy(mpid, cp->mampid,8);
+		set_mpid(cp->mampid);
 		calculate_samples(cp);
 	}
 

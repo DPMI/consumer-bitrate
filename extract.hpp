@@ -3,6 +3,7 @@
 
 #include <caputils/caputils.h>
 #include <caputils/packet.h>
+#include <caputils/marc.h>
 #include <qd/qd_real.h>
 
 enum Formatter {
@@ -99,6 +100,12 @@ public:
 	 * Default is false.
 	 */
 	void set_relative_time(bool state);
+
+	/**
+	 * Called by packet processing for handing mpid.
+	 * Default implementation is nop.
+	 */
+	virtual void set_mpid(const mampid_t mpid);
 
 	/**
 	 * Set the output formatter.

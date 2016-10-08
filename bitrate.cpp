@@ -19,8 +19,8 @@
 static int show_zero = 0;
 static int viz_hack = 0;
 static const char* iface = NULL;
+static char* influx_mpid = nullptr;
 const char* program_name = NULL;
-const char* mpid ="mptest01";
 const char* cURL = "http://localhost:8086/write?db=testdb";
 const char* cURL_user = "miffo";
 const char* cURL_pwd = "konko";
@@ -92,7 +92,7 @@ public:
 	virtual void write_sample(double t, double bitrate){
 		fprintf(stdout, "Influx: formatting data.\n");
 		char str[1500];
-		sprintf(str,"bitrate,mpid=%s value=%g %llu",mpid,bitrate,(long long int) (t*1e9));
+		sprintf(str,"bitrate,mpid=%s value=%g %llu",influx_mpid,bitrate,(long long int) (t*1e9));
 
 		fprintf(stderr, "curl string: %s \n",str);
 
@@ -118,6 +118,11 @@ public:
 		, bits(0.0){
 
 		set_formatter(FORMAT_DEFAULT);
+	}
+
+	void set_mpid(const mampid_t mpid){
+		if ( influx_mpid ) return; /* @todo only first mpid will be used */
+		influx_mpid = strdup(mampid_get(mpid));
 	}
 
 	void set_formatter(enum Formatter format){
@@ -183,9 +188,8 @@ static struct option long_options[]= {
 	{"absolute-time",    no_argument,       0, 'T'},
 	{"viz-hack",         no_argument,       &viz_hack, 1},
 	{"influx-url",       required_argument, 0, 'u'},
-	{"influx-user",       required_argument, 0, 'U'},
+	{"influx-user",      required_argument, 0, 'U'},
 	{"influx-pwd",       required_argument, 0, 'P'},
-	{"influx-mpid",      required_argument, 0, 'Q'},
 	{"help",             no_argument,       0, 'h'},
 	{0, 0, 0, 0} /* sentinel */
 };
@@ -218,8 +222,6 @@ static void show_usage(void){
 	       "                              cf. http://localhost:8086/write?db=testdb \n"
 	       "  -U  --influx-user           Influx Username for authentication.\n"
 	       "  -P  --influx-pwd            Influx Password for authentication.\n"
-	       "  -Q  --influx-mpid           MP identifier in Influx, until automatically read from stream..\n"
-
 	       "  -h, --help                  This text.\n\n");
 
 	output_format_list();
@@ -304,10 +306,6 @@ int main(int argc, char **argv){
 			cURL_pwd = optarg;
 			break;
 
-		case 'Q': /* --influx-mpid */
-			mpid = optarg;
-			break;
-
 		case 'h':
 			show_usage();
 			return 0;
@@ -339,6 +337,7 @@ int main(int argc, char **argv){
 	app.process_stream(stream, &filter);
 
 	/* Release resources */
+	free(influx_mpid);
 	stream_close(stream);
 	filter_close(&filter);
 
