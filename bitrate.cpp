@@ -217,11 +217,15 @@ static void show_usage(void){
 	       "      --viz-hack\n"
 	       "  -t, --relative-time         Show timestamps relative to the first packet.\n"
 	       "  -T, --absolute-time         Show timestamps with absolute values (default).\n"
+	       "  -h, --help                  This text.\n"
+	       "\n"
+	       "Influx\n"
 	       "  -u, --influx-url            URL used to send data to Infux; \n "
 	       "                              cf. http://localhost:8086/write?db=testdb \n"
 	       "  -U  --influx-user           Influx Username for authentication.\n"
 	       "  -P  --influx-pwd            Influx Password for authentication.\n"
-	       "  -h, --help                  This text.\n\n");
+	       "\n"
+		);
 
 	output_format_list();
 	filter_from_argv_usage();
