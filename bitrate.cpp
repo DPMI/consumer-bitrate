@@ -155,25 +155,25 @@ static struct option long_options[]= {
 static void show_usage(void){
 	printf("%s-" VERSION " (libcap_utils-%s)\n", program_name, caputils_version(NULL));
 	printf("(C) 2004 Patrik Arlos <patrik.arlos@bth.se>\n");
-	printf("(C) 2012 David Sveningsson <david.sveningsson@bth.se>\n");
+	printf("(C) 2012 David Sveningsson <ext@sidvind.com>\n");
 	printf("(C) 2012 Vamsi krishna Konakalla <vkk@bth.se>\n\n");
 	printf("Usage: %s [OPTIONS] STREAM\n", program_name);
-	printf("  -i, --iface                 For ethernet-based streams, this is the interface to listen\n"
-	       "                              on. For other streams it is ignored.\n"
-	       "  -m, --sampleFrequency       Sampling frequency in Hz. Valid prefixes are 'k', 'm' and 'g'.\n"
-	       "  -q, --level                 Level to calculate bitrate {link (default), network, transport and application}\n"
-	       "                              At level N, only packet size at particular layer is considered, use filters to select particular streams.\n"
-	       "                                - link: all bits captured at physical level, i.e link + network + transport + application\n"
-	       "                                - network: payload field at link layer, network + transport + application\n"
-	       "                                - transport: payload at network layer, transport + application\n"
-	       "                                - application: The payload field at transport level, ie.application\n"
-	       "                              Default is link.\n"
-	       "  -l, --linkCapacity          Link capacity in bits per second default 100 Mbps, (eg.input 100e6) \n"
+	printf("  -i, --iface                 For ethernet-based streams, this is the interface\n"
+	       "                              to listen on. For other streams it is ignored.\n"
+	       "  -m, --sampleFrequency       Sampling frequency in Hz. Prefixes: k, m, g.\n"
+	       "  -q, --level                 Level to calculate bitrate on. At level N, only\n"
+	       "                              packet size at particular layer is considered.\n"
+	       "                                - link: all bits captured at physical level.\n"
+	       "                                - network: payload field at link layer.\n"
+	       "                                - transport: payload at network layer.\n"
+	       "                                - application: payload field at transport level.\n"
+	       "                              Default is link-layer.\n"
+	       "  -l, --linkCapacity          Link capacity in BPS, default is 100e6 (100 Mbps).\n"
 	       "  -p, --packets=N             Stop after N packets.\n"
 	       "  -z, --show-zero             Show bitrate when zero.\n"
 	       "  -x, --no-show-zero          Don't show bitrate when zero [default]\n"
-	       "  -f, --format=FORMAT         Set a specific output format. See below for list of supported formats.\n"
-	       "      --viz-hack\n"
+	       "  -f, --format=FORMAT         Set a specific output format. See below for list\n"
+	       "                              of supported formats.\n"
 	       "  -t, --relative-time         Show timestamps relative to the first packet.\n"
 	       "  -T, --absolute-time         Show timestamps with absolute values (default).\n"
 	       "  -h, --help                  This text.\n\n");
