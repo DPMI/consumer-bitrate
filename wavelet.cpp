@@ -238,8 +238,10 @@ public:
 		case FORMAT_CSV:     output = new CSVOutput(';', false); break;
 		case FORMAT_TSV:     output = new CSVOutput('\t', false); break;
 		case FORMAT_MATLAB:  output = new CSVOutput('\t', true); break;
-		case FORMAT_INFLUX:
-			throw std::runtime_error("Influx not supported for wavelet yet");
+		  /* 
+		     // Does not really make sence, to push to influx... multiple values; different meanings. 
+		    case FORMAT_INFLUX:  output = new InfluxOutput(influx_url, influx_user, influx_pwd); break;
+		  */
 		}
 	}
 
