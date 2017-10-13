@@ -24,6 +24,7 @@ const char* program_name = NULL;
 static const char* influx_url = "http://localhost:8086/write?db=testdb";
 static const char* influx_user = "miffo";
 static const char* influx_pwd = "konko";
+static const char* influx_tag = NULL;
 
 enum {
 	HTTP_CREATED = 204,
@@ -92,12 +93,19 @@ public:
 	virtual void write_sample(double t, double bitrate){
 		static char str[1500];
 
-		sprintf(str, "bitrate,mpid=%s value=%g %llu",
-		        influx_mpid, bitrate, (long long int)(t*1e9));
-
+                if (influx_tag) {
+                  sprintf(str, "bitrate,mpid=%s,tag=%s value=%g %llu",
+                          influx_mpid, influx_tag,bitrate, (long long int)(t*1e9));
+                } else {
+                  sprintf(str, "bitrate,mpid=%s value=%g %llu",
+                          influx_mpid, bitrate, (long long int)(t*1e9));
+                }
+		fprintf(stdout,"Sending:%s ",  str);
 		const int status = http.POST(str);
 		if ( status != HTTP_CREATED ){
 			fprintf(stderr, "influx returned HTTP %d\n", status);
+		} else {
+		  fprintf(stdout," OK \n");
 		}
 	}
 
@@ -189,6 +197,7 @@ static struct option long_options[]= {
 	{"influx-url",       required_argument, 0, 'u'},
 	{"influx-user",      required_argument, 0, 'U'},
 	{"influx-pwd",       required_argument, 0, 'P'},
+	{"influx-tag",       required_argument, 0, 'Q'},
 	{"help",             no_argument,       0, 'h'},
 	{0, 0, 0, 0} /* sentinel */
 };
@@ -224,6 +233,8 @@ static void show_usage(void){
 	       "                              cf. http://localhost:8086/write?db=testdb \n"
 	       "  -U  --influx-user           Influx Username for authentication.\n"
 	       "  -P  --influx-pwd            Influx Password for authentication.\n"
+	        "  -Q  --influx-tag           Additional Influx tag. tag=<string>\n"
+
 	       "\n"
 		);
 
@@ -308,6 +319,11 @@ int main(int argc, char **argv){
 		case 'P': /* --influx-pwd */
 			influx_pwd = optarg;
 			break;
+
+                case 'Q': /* --influx-tag */
+                        influx_tag = optarg;
+                        break;
+
 
 		case 'h':
 			show_usage();
