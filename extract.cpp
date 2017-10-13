@@ -19,6 +19,7 @@ extern "C" int is_marker(const struct cap_header* cp, struct marker* ptr, int po
 bool keep_running = true;
 extern const char* program_name;
 
+
 void output_format_list(){
 	printf("Supported output formats:\n");
 	const struct formatter_entry* cur = formatter_lut;
@@ -143,6 +144,10 @@ void Extractor::set_formatter(const char* str){
 	fprintf(stderr, "%s: unrecognised formatter \"%s\", ignored.\n", program_name, str);
 }
 
+void Extractor::set_mpid(const mampid_t mpid){
+
+}
+
 void Extractor::reset(){
 	first_packet = true;
 	counter = 1;
@@ -172,6 +177,7 @@ void Extractor::process_stream(const stream_t st, struct filter* filter){
 			break; /* shutdown or error */
 		}
 
+		set_mpid(cp->mampid);
 		calculate_samples(cp);
 	}
 

@@ -3,6 +3,7 @@
 
 #include <caputils/caputils.h>
 #include <caputils/packet.h>
+#include <caputils/marc.h>
 #include <qd/qd_real.h>
 
 enum Formatter {
@@ -10,14 +11,17 @@ enum Formatter {
 	FORMAT_CSV,                       /* CSV (semi-colon separated) */
 	FORMAT_TSV,                       /* TSV (tab-separated) */
 	FORMAT_MATLAB,                    /* Matlab format (TSV with header) */
+	FORMAT_INFLUX,                    /* InFluxDB, url + credentials needed */
 };
 
 struct formatter_entry { const char* name; const char* desc; enum Formatter fmt; };
 const struct formatter_entry formatter_lut[] = {
-	{"default", "default format",       FORMAT_DEFAULT},
-	{"csv",     "semi-colon separated", FORMAT_CSV},
-	{"tsv",     "tab-separated",        FORMAT_TSV},
-	{"matlab",  "suitable for matlab",  FORMAT_MATLAB},
+	{"default", "default format",        FORMAT_DEFAULT},
+	{"csv",     "semi-colon separated",  FORMAT_CSV},
+	{"tsv",     "tab-separated",         FORMAT_TSV},
+	{"matlab",  "suitable for matlab",   FORMAT_MATLAB},
+	{"influx",  "suitable for influxdb", FORMAT_INFLUX},
+
 	{nullptr, nullptr, (enum Formatter)0} /* sentinel */
 };
 
@@ -98,6 +102,12 @@ public:
 	void set_relative_time(bool state);
 
 	/**
+	 * Called by packet processing for handing mpid.
+	 * Default implementation is nop.
+	 */
+	virtual void set_mpid(const mampid_t mpid);
+
+	/**
 	 * Set the output formatter.
 	 * If the app does not handle a specific format it should warn and set to default.
 	 */
@@ -150,6 +160,7 @@ protected:
 	qd_real tSample;
 	int counter;
 
+
 private:
 	void calculate_samples(const cap_head* cp);
 	bool valid_first_packet(const cap_head* cp);
@@ -160,6 +171,7 @@ private:
 	unsigned int max_packets;
 	unsigned long link_capacity;
 	enum Level level;
+
 };
 
 #endif /* EXTRACT_H */

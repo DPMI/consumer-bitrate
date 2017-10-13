@@ -12,6 +12,7 @@
 #include <cinttypes>
 #include <getopt.h>
 #include <functional>
+#include <stdexcept>
 
 #include "extract.hpp"
 
@@ -237,6 +238,8 @@ public:
 		  case FORMAT_CSV:     output = new CSVOutput(';', false); break;
 		  case FORMAT_TSV:     output = new CSVOutput('\t', false); break;
 		  case FORMAT_MATLAB:  output = new CSVOutput('\t', true); break;
+			case FORMAT_INFLUX:
+				throw std::runtime_error("Influx not supported for timescale yet");
 		}
 	}
 

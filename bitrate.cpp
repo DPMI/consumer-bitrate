@@ -14,11 +14,20 @@
 #include <getopt.h>
 
 #include "extract.hpp"
+#include "http.hpp"
 
 static int show_zero = 0;
 static int viz_hack = 0;
 static const char* iface = NULL;
+static char* influx_mpid = nullptr;
 const char* program_name = NULL;
+static const char* influx_url = "http://localhost:8086/write?db=testdb";
+static const char* influx_user = "miffo";
+static const char* influx_pwd = "konko";
+
+enum {
+	HTTP_CREATED = 204,
+};
 
 static void handle_sigint(int signum){
 	if ( !keep_running ){
@@ -73,6 +82,29 @@ private:
 	bool show_header;
 };
 
+class InfluxOutput: public Output {
+public:
+	InfluxOutput(const char* url, const char* user, const char* pass)
+		: http(url, user, pass) {
+
+	}
+
+	virtual void write_sample(double t, double bitrate){
+		static char str[1500];
+
+		sprintf(str, "bitrate,mpid=%s value=%g %llu",
+		        influx_mpid, bitrate, (long long int)(t*1e9));
+
+		const int status = http.POST(str);
+		if ( status != HTTP_CREATED ){
+			fprintf(stderr, "influx returned HTTP %d\n", status);
+		}
+	}
+
+protected:
+	HTTPOutput http;
+};
+
 static double my_round (double value){
 	static const double bias = 0.0005;
 	return (floor(value + bias));
@@ -87,12 +119,18 @@ public:
 		set_formatter(FORMAT_DEFAULT);
 	}
 
+	void set_mpid(const mampid_t mpid){
+		if ( influx_mpid ) return; /* @todo only first mpid will be used */
+		influx_mpid = strdup(mampid_get(mpid));
+	}
+
 	void set_formatter(enum Formatter format){
 		switch (format){
 		case FORMAT_DEFAULT: output = new DefaultOutput; break;
 		case FORMAT_CSV:     output = new CSVOutput(';', false); break;
 		case FORMAT_TSV:     output = new CSVOutput('\t', false); break;
 		case FORMAT_MATLAB:  output = new CSVOutput('\t', true); break;
+		case FORMAT_INFLUX:  output = new InfluxOutput(influx_url, influx_user, influx_pwd); break;
 		}
 	}
 
@@ -135,7 +173,7 @@ private:
 	double bits;
 };
 
-static const char* short_options = "p:i:q:m:l:f:zxtTh";
+static const char* short_options = "u:U:P:Q:p:i:q:m:l:f:zxtTh";
 static struct option long_options[]= {
 	{"packets",          required_argument, 0, 'p'},
 	{"iface",            required_argument, 0, 'i'},
@@ -148,6 +186,9 @@ static struct option long_options[]= {
 	{"relative-time",    no_argument,       0, 't'},
 	{"absolute-time",    no_argument,       0, 'T'},
 	{"viz-hack",         no_argument,       &viz_hack, 1},
+	{"influx-url",       required_argument, 0, 'u'},
+	{"influx-user",      required_argument, 0, 'U'},
+	{"influx-pwd",       required_argument, 0, 'P'},
 	{"help",             no_argument,       0, 'h'},
 	{0, 0, 0, 0} /* sentinel */
 };
@@ -176,7 +217,15 @@ static void show_usage(void){
 	       "                              of supported formats.\n"
 	       "  -t, --relative-time         Show timestamps relative to the first packet.\n"
 	       "  -T, --absolute-time         Show timestamps with absolute values (default).\n"
-	       "  -h, --help                  This text.\n\n");
+	       "  -h, --help                  This text.\n"
+	       "\n"
+	       "Influx\n"
+	       "  -u, --influx-url            URL used to send data to Infux; \n "
+	       "                              cf. http://localhost:8086/write?db=testdb \n"
+	       "  -U  --influx-user           Influx Username for authentication.\n"
+	       "  -P  --influx-pwd            Influx Password for authentication.\n"
+	       "\n"
+		);
 
 	output_format_list();
 	filter_from_argv_usage();
@@ -197,6 +246,7 @@ int main(int argc, char **argv){
 	}
 
 	BitrateCalculator app;
+	char* format = nullptr;
 
 	int op, option_index = -1;
 	while ( (op = getopt_long(argc, argv, short_options, long_options, &option_index)) != -1 ){
@@ -206,7 +256,9 @@ int main(int argc, char **argv){
 			break;
 
 		case 'f': /* --format */
-			app.set_formatter(optarg);
+			/* format initialization is deferred until all args has been
+			 * consumed */
+			format = strdup(optarg);
 			break;
 
 		case 'p':
@@ -245,6 +297,18 @@ int main(int argc, char **argv){
 			app.set_relative_time(false);
 			break;
 
+		case 'u': /* --influx-url */
+			influx_url = optarg;
+			break;
+
+		case 'U': /* --influx-user */
+			influx_user = optarg;
+			break;
+
+		case 'P': /* --influx-pwd */
+			influx_pwd = optarg;
+			break;
+
 		case 'h':
 			show_usage();
 			return 0;
@@ -252,6 +316,12 @@ int main(int argc, char **argv){
 		default:
 			fprintf (stderr, "%s: ?? getopt returned character code 0%o ??\n", program_name, op);
 		}
+	}
+
+	/* load output format */
+	if ( format ){
+		app.set_formatter(format);
+		free(format);
 	}
 
 	/* handle C-c */
@@ -270,6 +340,7 @@ int main(int argc, char **argv){
 	app.process_stream(stream, &filter);
 
 	/* Release resources */
+	free(influx_mpid);
 	stream_close(stream);
 	filter_close(&filter);
 
