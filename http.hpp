@@ -15,7 +15,7 @@ public:
 	 * @param data POST body
 	 * @return HTTP status code
 	 */
-	int POST(const char* data);
+         int POST(const char* data);
 
 protected:
 	CURL* curl;

@@ -49,3 +49,4 @@ int HTTPOutput::POST(const char* data){
 	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response);
 	return response;
 }
+

@@ -94,16 +94,17 @@ public:
 		static char str[1500];
 
                 if (influx_tag) {
-                  sprintf(str, "bitrate,mpid=%s,tag=%s value=%g %llu",
+                  sprintf(str, "bitrate,mpid=%s,%s value=%g %llu",
                           influx_mpid, influx_tag,bitrate, (long long int)(t*1e9));
                 } else {
                   sprintf(str, "bitrate,mpid=%s value=%g %llu",
                           influx_mpid, bitrate, (long long int)(t*1e9));
                 }
-		fprintf(stdout,"Sending:%s ",  str);
+		fprintf(stderr,"Sending:%s ",  str);
+		//		const char* statusstr=http.POSTstr(str);
 		const int status = http.POST(str);
 		if ( status != HTTP_CREATED ){
-			fprintf(stderr, "influx returned HTTP %d\n", status);
+		  	fprintf(stderr, "influx(1) returned HTTP %d\n", status);
 		} else {
 		  fprintf(stdout," OK \n");
 		}
